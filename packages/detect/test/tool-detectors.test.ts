@@ -17,6 +17,7 @@ import { htmlhintSpec } from "../src/adapters/htmlhint.ts";
 import { mypySpec } from "../src/adapters/mypy.ts";
 import { pylintSpec } from "../src/adapters/pylint.ts";
 import { shellcheckSpec } from "../src/adapters/shellcheck.ts";
+import { sqlfluffSpec } from "../src/adapters/sqlfluff.ts";
 import { stylelintSpec } from "../src/adapters/stylelint.ts";
 import { trufflehogSpec } from "../src/adapters/trufflehog.ts";
 import { tscSpec } from "../src/adapters/tsc.ts";
@@ -157,6 +158,17 @@ const CASES: Array<[ToolSpec, Row[]]> = [
       ["arrayIndexOutOfBounds", "native/buf.c", 9, "high", "vulnerability"],
       ["nullPointer", "native/buf.c", 10, "high", "vulnerability"],
       ["memleak", "native/buf.c", 10, "medium", "correctness"],
+    ],
+  ],
+  [
+    sqlfluffSpec,
+    [
+      ["RF02", "db/query.sql", 1, "low", "correctness"],
+      ["AM05", "db/query.sql", 3, "low", "correctness"],
+      ["RF02", "db/query.sql", 4, "low", "correctness"],
+      ["AM02", "db/query.sql", 4, "low", "correctness"],
+      ["AL01", "db/query.sql", 2, "info", "style"],
+      ["AL01", "db/query.sql", 3, "info", "style"],
     ],
   ],
 ];

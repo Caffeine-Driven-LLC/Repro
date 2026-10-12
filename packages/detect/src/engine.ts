@@ -16,6 +16,7 @@ import { pylintAdapter } from "./adapters/pylint.ts";
 import { ruffAdapter } from "./adapters/ruff.ts";
 import { semgrepAdapter } from "./adapters/semgrep.ts";
 import { shellcheckAdapter } from "./adapters/shellcheck.ts";
+import { sqlfluffAdapter } from "./adapters/sqlfluff.ts";
 import { stylelintAdapter } from "./adapters/stylelint.ts";
 import { testsAdapter } from "./adapters/tests.ts";
 import { trufflehogAdapter } from "./adapters/trufflehog.ts";
@@ -82,6 +83,7 @@ export function defaultAdapters(): DetectorAdapter[] {
     detectSecretsAdapter,
     trufflehogAdapter,
     cppcheckAdapter,
+    sqlfluffAdapter,
     testsAdapter,
   ];
 }

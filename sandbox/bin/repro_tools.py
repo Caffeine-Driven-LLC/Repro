@@ -595,11 +595,36 @@ class Cppcheck(Tool):
         return issues
 
 
+class Sqlfluff(Tool):
+    id = "sqlfluff"
+    batch_size = 50
+
+    def matches(self, path):
+        return ext(path) == ".sql"
+
+    def argv(self, files):
+        # ANSI unless Repro's config says otherwise: the target's .sqlfluff files are ignored (they
+        # could exclude rules), and so are its `-- noqa` comments.
+        return [
+            "sqlfluff", "lint", "--config", f"{LINT}/sqlfluff.cfg", "--ignore-local-config", "--disable-noqa",
+            "--dialect", "ansi", "--format", "json", "--nofail", "--processes", "1", "--", *files,
+        ]
+
+    def parse(self, out):
+        issues = []
+        for result in json.loads(out or "[]"):
+            for v in result["violations"]:
+                start = v.get("start_line_no") or 1
+                issues.append(Issue(v["code"], result["filepath"], start, max(v.get("end_line_no") or start, start),
+                                    one_line(v["description"]), "warning" if v.get("warning") else "error"))
+        return issues
+
+
 TOOLS: dict[str, Tool] = {
     t.id: t
     for t in (
         Bandit(), Mypy(), Pylint(), Vulture(), Eslint(), Tsc(), Htmlhint(), Stylelint(), Shellcheck(), Hadolint(),
-        Actionlint(), Checkov(), DetectSecrets(), Trufflehog(), Cppcheck(),
+        Actionlint(), Checkov(), DetectSecrets(), Trufflehog(), Cppcheck(), Sqlfluff(),
     )
 }
 

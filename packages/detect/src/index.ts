@@ -14,6 +14,7 @@ export * from "./adapters/pylint.ts";
 export * from "./adapters/ruff.ts";
 export * from "./adapters/semgrep.ts";
 export * from "./adapters/shellcheck.ts";
+export * from "./adapters/sqlfluff.ts";
 export * from "./adapters/stylelint.ts";
 export * from "./adapters/tests.ts";
 export * from "./adapters/trufflehog.ts";
