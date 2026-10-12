@@ -46,7 +46,7 @@ A control plane sits behind all of this. The CLI and the web dashboard queue Run
 
 ## What makes it different
 
-- **Detection is deterministic.** Semgrep (the registry rules plus Repro's own privacy rules), gitleaks, osv-scanner, Ruff, and the project's own test suite. No model ever decides what counts as a finding.
+- **Detection is deterministic.** 25 detectors: Semgrep (the registry rules plus Repro's own privacy rules), gitleaks, osv-scanner, Ruff, and the project's own test suite, plus Bandit, mypy, Pylint, Vulture, ESLint (with eslint-plugin-security), the TypeScript compiler, HTMLHint, stylelint, ShellCheck, hadolint, actionlint, Checkov, detect-secrets, TruffleHog, cppcheck, SQLFluff, yamllint, codespell, and a syntax check for JSON, TOML, YAML, and Python. Each runs with Repro's own config, never the target's, and every finding carries a command that re-checks it. No model ever decides what counts as a finding.
 - **Token-efficient by design.** The expensive part, model reasoning, is spent on a short list of confirmed findings, not on a whole codebase or a scanner's raw output. Findings that share a root cause are diagnosed together, each repair attempt has a hard cap, and an optional request budget bounds what one Run can spend.
 - **Findings are reproduced, not just reported.** The noise a scanner produces collapses to what the sandbox actually confirmed. The reproduction output travels with the finding as its "before".
 - **Gemini proposes, the sandbox disposes.** Every model output that matters is checked by something deterministic: a schema, `git diff`, the test suite, a detector re-run, a counter-test.
@@ -136,7 +136,7 @@ REPRO_NETWORK_TESTS=1 npm test    # also the tests that reach GitHub and the pac
 ## Safety
 
 - Target code runs only inside the sandbox: no network, a read-only root filesystem, and no added privileges. Installing a target's dependencies is the one step with network access, and it reaches only the npm and PyPI registries, through a proxy.
-- gitleaks always runs with `--redact`, and secrets are redacted from everything sent to a model.
+- gitleaks always runs with `--redact`, the other secret scanners' findings mask the matched line, and secrets are redacted from everything sent to a model.
 - Model API keys are read from the environment only.
 - No model's built-in code execution is enabled anywhere.
 - Target code, comments, and scanner output are treated as untrusted data, never as instructions.
