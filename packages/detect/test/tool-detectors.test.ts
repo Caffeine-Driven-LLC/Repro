@@ -9,6 +9,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { actionlintSpec } from "../src/adapters/actionlint.ts";
 import { banditSpec } from "../src/adapters/bandit.ts";
 import { checkovSpec } from "../src/adapters/checkov.ts";
+import { cppcheckSpec } from "../src/adapters/cppcheck.ts";
 import { detectSecretsSpec } from "../src/adapters/detect-secrets.ts";
 import { eslintSpec } from "../src/adapters/eslint.ts";
 import { hadolintSpec } from "../src/adapters/hadolint.ts";
@@ -147,6 +148,15 @@ const CASES: Array<[ToolSpec, Row[]]> = [
     [
       ["AWS", "config/settings.py", 2, "high", "vulnerability"],
       ["Github", "config/settings.py", 5, "high", "vulnerability"],
+    ],
+  ],
+  [
+    cppcheckSpec,
+    [
+      ["bufferAccessOutOfBounds", "native/buf.c", 7, "high", "vulnerability"],
+      ["arrayIndexOutOfBounds", "native/buf.c", 9, "high", "vulnerability"],
+      ["nullPointer", "native/buf.c", 10, "high", "vulnerability"],
+      ["memleak", "native/buf.c", 10, "medium", "correctness"],
     ],
   ],
 ];

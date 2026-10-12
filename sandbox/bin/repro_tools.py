@@ -563,11 +563,43 @@ class Trufflehog(Tool):
         return issues
 
 
+# --- Everything else ------------------------------------------------------------------------------
+
+
+class Cppcheck(Tool):
+    id = "cppcheck"
+    stream = "stderr"
+    # cppcheck's own bookkeeping, not findings about the code.
+    NOT_FINDINGS = {"missingInclude", "missingIncludeSystem", "checkersReport", "normalCheckLevelMaxBranches", "toomanyconfigs", "unmatchedSuppression"}
+
+    def matches(self, path):
+        return ext(path) in (".c", ".h", ".cc", ".cpp", ".cxx", ".hpp", ".hh", ".hxx")
+
+    def argv(self, files):
+        # No --inline-suppr, so `cppcheck-suppress` comments in the target are ignored.
+        return [
+            "cppcheck", "--enable=warning,performance,portability", "--xml", "--quiet", "--error-exitcode=0",
+            "--suppress=missingIncludeSystem", "--max-configs=1", *files,
+        ]
+
+    def parse(self, out):
+        issues = []
+        # No XML at all means cppcheck never got as far as checking anything.
+        root = ET.fromstring(out[out.index("<?xml") :])
+        for e in root.iter("error"):
+            loc = e.find("location")
+            if loc is None or e.get("id") in self.NOT_FINDINGS or e.get("severity") in ("information", "none"):
+                continue
+            row = int(loc.get("line", "1"))
+            issues.append(Issue(e.get("id"), loc.get("file"), row, row, one_line(e.get("msg", "")), e.get("severity", "")))
+        return issues
+
+
 TOOLS: dict[str, Tool] = {
     t.id: t
     for t in (
         Bandit(), Mypy(), Pylint(), Vulture(), Eslint(), Tsc(), Htmlhint(), Stylelint(), Shellcheck(), Hadolint(),
-        Actionlint(), Checkov(), DetectSecrets(), Trufflehog(),
+        Actionlint(), Checkov(), DetectSecrets(), Trufflehog(), Cppcheck(),
     )
 }
 

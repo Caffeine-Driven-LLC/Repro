@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<results version="2">
+    <cppcheck version="2.22.0"/>
+    <errors>
+        <error id="arrayIndexOutOfBounds" severity="error" msg="Array &apos;buf[8]&apos; accessed at index 10, which is out of bounds." verbose="Array &apos;buf[8]&apos; accessed at index 10, which is out of bounds." cwe="788" hash="15807822409878849921" file0="native/buf.c">
+            <location file="native/buf.c" line="9" column="8" info="Array index out of bounds"/>
+        </error>
+        <error id="bufferAccessOutOfBounds" severity="error" msg="Buffer is accessed out of bounds: buf" verbose="Buffer is accessed out of bounds: buf" cwe="788" hash="15337285730232864736" file0="native/buf.c">
+            <location file="native/buf.c" line="7" column="12" info="Buffer overrun"/>
+        </error>
+        <error id="memleak" severity="error" msg="Memory leak: leak" verbose="Memory leak: leak" cwe="401" hash="8793233024765659853" file0="native/buf.c">
+            <location file="native/buf.c" line="10" column="5"/>
+            <symbol>leak</symbol>
+        </error>
+        <error id="nullPointer" severity="error" msg="Null pointer dereference: p" verbose="Null pointer dereference: p" cwe="476" hash="10097290746350302494" file0="native/buf.c">
+            <location file="native/buf.c" line="10" column="13" info="Null pointer dereference"/>
+            <location file="native/buf.c" line="6" column="14" info="Assignment &apos;p=NULL&apos;, assigned value is 0"/>
+            <symbol>p</symbol>
+        </error>
+    </errors>
+</results>
