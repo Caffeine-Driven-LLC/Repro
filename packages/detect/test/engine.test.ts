@@ -1,6 +1,6 @@
 import type { DetectorAdapter, Finding } from "@repro/contracts";
 import { describe, expect, it } from "vitest";
-import { detect } from "../src/engine.ts";
+import { defaultAdapters, detect } from "../src/engine.ts";
 import { FakeExecutor, seededWorkspace } from "./helpers.ts";
 
 const base: Finding = {
@@ -114,5 +114,13 @@ describe("detect", () => {
     const r = await detect(seededWorkspace, exec, adapters, { install: null, concurrency: 2 });
     expect(peak).toBe(2);
     expect(r.findings.map((f) => f.detectorId)).toEqual(["a", "b", "c", "d", "e", "f"]);
+  });
+});
+
+describe("defaultAdapters", () => {
+  it("has 25 detectors, each with its own id", () => {
+    const ids = defaultAdapters().map((a) => a.id);
+    expect(ids).toHaveLength(25);
+    expect(new Set(ids).size).toBe(25);
   });
 });

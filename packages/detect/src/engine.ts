@@ -19,6 +19,7 @@ import { semgrepAdapter } from "./adapters/semgrep.ts";
 import { shellcheckAdapter } from "./adapters/shellcheck.ts";
 import { sqlfluffAdapter } from "./adapters/sqlfluff.ts";
 import { stylelintAdapter } from "./adapters/stylelint.ts";
+import { syntaxAdapter } from "./adapters/syntax.ts";
 import { testsAdapter } from "./adapters/tests.ts";
 import { trufflehogAdapter } from "./adapters/trufflehog.ts";
 import { tscAdapter } from "./adapters/tsc.ts";
@@ -88,6 +89,7 @@ export function defaultAdapters(): DetectorAdapter[] {
     sqlfluffAdapter,
     yamllintAdapter,
     codespellAdapter,
+    syntaxAdapter,
     testsAdapter,
   ];
 }

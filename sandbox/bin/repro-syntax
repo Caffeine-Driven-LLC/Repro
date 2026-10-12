@@ -1,0 +1,80 @@
+#!/opt/repro/venvs/lint/bin/python
+"""Check that JSON, TOML, YAML, and Python files parse at all.
+
+Usage: repro-syntax <file>...
+
+The tool behind the `syntax` detector (repro_tools.py's Syntax class, which also says which files
+count as which). Prints one JSON object per file that doesn't parse:
+  {"rule": "json-syntax", "file": ..., "line": ..., "end_line": ..., "message": ..., "level": "error"}
+and exits 0 either way. Runs on the linters' virtualenv, the one with PyYAML. Messages carry the
+parser's own description and position, never the file's text.
+"""
+import ast
+import json
+import sys
+import tomllib
+
+import yaml
+
+from repro_tools import syntax_kind
+
+
+class AnyTagLoader(yaml.SafeLoader):
+    """SafeLoader that accepts any local tag (CloudFormation's !Ref, Ansible's !vault) as plain data:
+    an unknown tag is not a syntax error."""
+
+
+AnyTagLoader.add_multi_constructor("!", lambda loader, suffix, node: None)
+
+
+def check(path: str, kind: str) -> tuple[int, str] | None:
+    with open(path, "rb") as fh:
+        raw = fh.read()
+    try:
+        if kind == "python":
+            ast.parse(raw, filename=path)
+        elif kind == "toml":
+            tomllib.loads(raw.decode("utf-8"))
+        elif kind == "json":
+            json.loads(raw.decode("utf-8-sig"))
+        elif kind == "yaml":
+            for _ in yaml.load_all(raw, Loader=AnyTagLoader):
+                pass
+    except SyntaxError as e:
+        return e.lineno or 1, f"{e.msg}"
+    except json.JSONDecodeError as e:
+        return e.lineno, e.msg
+    except tomllib.TOMLDecodeError as e:
+        line = getattr(e, "lineno", None) or 1
+        return line, str(e).split(" (at ")[0]
+    except yaml.MarkedYAMLError as e:
+        mark = e.problem_mark or e.context_mark
+        return (mark.line + 1 if mark else 1), " ".join(filter(None, [e.context, e.problem]))
+    except yaml.YAMLError as e:
+        return 1, str(e).splitlines()[0]
+    except UnicodeDecodeError:
+        return 1, "not valid UTF-8"
+    except (ValueError, RecursionError, MemoryError) as e:
+        return 1, type(e).__name__
+    return None
+
+
+def main() -> None:
+    for path in sys.argv[1:]:
+        if path == "--":
+            continue
+        kind = syntax_kind(path)
+        if kind is None:
+            continue
+        try:
+            problem = check(path, kind)
+        except OSError:
+            continue
+        if problem:
+            line, message = problem
+            print(json.dumps({"rule": f"{kind}-syntax", "file": path, "line": line, "end_line": line,
+                              "message": f"invalid {kind.upper() if kind != 'python' else 'Python'}: {message}", "level": "error"}))
+
+
+if __name__ == "__main__":
+    main()

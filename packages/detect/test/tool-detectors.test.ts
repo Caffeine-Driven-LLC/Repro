@@ -20,6 +20,7 @@ import { pylintSpec } from "../src/adapters/pylint.ts";
 import { shellcheckSpec } from "../src/adapters/shellcheck.ts";
 import { sqlfluffSpec } from "../src/adapters/sqlfluff.ts";
 import { stylelintSpec } from "../src/adapters/stylelint.ts";
+import { syntaxSpec } from "../src/adapters/syntax.ts";
 import { trufflehogSpec } from "../src/adapters/trufflehog.ts";
 import { tscSpec } from "../src/adapters/tsc.ts";
 import { vultureSpec } from "../src/adapters/vulture.ts";
@@ -179,6 +180,13 @@ const CASES: Array<[ToolSpec, Row[]]> = [
     [
       ["recieve", "config/settings.py", 1, "info", "style"],
       ["seperate", "config/settings.py", 1, "info", "style"],
+    ],
+  ],
+  [
+    syntaxSpec,
+    [
+      ["python-syntax", "app/broken.py", 1, "medium", "correctness"],
+      ["json-syntax", "config/broken.json", 1, "medium", "correctness"],
     ],
   ],
 ];

@@ -666,11 +666,43 @@ class Codespell(Tool):
         return issues
 
 
+class Syntax(Tool):
+    id = "syntax"
+    batch_size = 500
+
+    def matches(self, path):
+        return syntax_kind(path) is not None
+
+    def argv(self, files):
+        return ["repro-syntax", "--", *files]
+
+    def parse(self, out):
+        return [Issue(**json.loads(line)) for line in out.splitlines() if line.startswith("{")]
+
+
+# Files whose syntax repro-syntax checks, and as what. JSON that is commonly JSON-with-comments
+# (tsconfig, VS Code settings) is left out, and so are YAML templates (Helm's {{ }}).
+def syntax_kind(path: str) -> str | None:
+    name = os.path.basename(path)
+    e = ext(path)
+    if e == ".py":
+        return "python"
+    if e == ".toml":
+        return "toml"
+    if e in (".yml", ".yaml"):
+        return None if "/templates/" in f"/{path}" else "yaml"
+    if e == ".json":
+        jsonc = name.startswith(("tsconfig", "jsconfig")) or path.startswith((".vscode/", ".devcontainer/")) or name in (".eslintrc.json", ".babelrc.json")
+        return None if jsonc else "json"
+    return None
+
+
 TOOLS: dict[str, Tool] = {
     t.id: t
     for t in (
         Bandit(), Mypy(), Pylint(), Vulture(), Eslint(), Tsc(), Htmlhint(), Stylelint(), Shellcheck(), Hadolint(),
         Actionlint(), Checkov(), DetectSecrets(), Trufflehog(), Cppcheck(), Sqlfluff(), Yamllint(), Codespell(),
+        Syntax(),
     )
 }
 
