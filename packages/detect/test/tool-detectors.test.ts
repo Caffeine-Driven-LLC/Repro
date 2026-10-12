@@ -7,6 +7,7 @@ import { DockerExecutor, sandboxAvailable } from "@repro/executor";
 import { ingest, removeWorkspace } from "@repro/ingest";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { banditSpec } from "../src/adapters/bandit.ts";
+import { eslintSpec } from "../src/adapters/eslint.ts";
 import { mypySpec } from "../src/adapters/mypy.ts";
 import { pylintSpec } from "../src/adapters/pylint.ts";
 import { vultureSpec } from "../src/adapters/vulture.ts";
@@ -48,6 +49,16 @@ const CASES: Array<[ToolSpec, Row[]]> = [
     [
       ["unreachable-code", "app/service.py", 26, "low", "correctness"],
       ["unused-import", "app/service.py", 1, "info", "style"],
+    ],
+  ],
+  [
+    eslintSpec,
+    [
+      ["security/detect-eval-with-expression", "web/server.js", 8, "high", "vulnerability"],
+      ["no-eval", "web/server.js", 8, "high", "vulnerability"],
+      ["security/detect-child-process", "web/server.js", 6, "medium", "vulnerability"],
+      ["security/detect-non-literal-fs-filename", "web/server.js", 7, "medium", "vulnerability"],
+      ["security/detect-unsafe-regex", "web/server.js", 9, "medium", "vulnerability"],
     ],
   ],
 ];

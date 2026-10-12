@@ -1,6 +1,7 @@
 import { type DetectorAdapter, type Executor, Finding, type Workspace } from "@repro/contracts";
 import { DockerExecutor, type InstallReport, installDependencies } from "@repro/executor";
 import { banditAdapter } from "./adapters/bandit.ts";
+import { eslintAdapter } from "./adapters/eslint.ts";
 import { gitleaksAdapter } from "./adapters/gitleaks.ts";
 import { mypyAdapter } from "./adapters/mypy.ts";
 import { osvAdapter } from "./adapters/osv.ts";
@@ -60,6 +61,7 @@ export function defaultAdapters(): DetectorAdapter[] {
     mypyAdapter,
     pylintAdapter,
     vultureAdapter,
+    eslintAdapter,
     testsAdapter,
   ];
 }

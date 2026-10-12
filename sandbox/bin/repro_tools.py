@@ -286,10 +286,41 @@ class Vulture(Tool):
         return issues
 
 
+# --- JavaScript, TypeScript, web ------------------------------------------------------------------
+
+JS_EXTS = (".js", ".jsx", ".mjs", ".cjs", ".ts", ".tsx", ".mts", ".cts")
+
+
+class Eslint(Tool):
+    id = "eslint"
+
+    def matches(self, path):
+        return ext(path) in JS_EXTS and not path.endswith((".min.js", ".d.ts", ".d.mts", ".d.cts"))
+
+    def argv(self, files):
+        # --config is Repro's flat config, so the target's eslint.config.* is never looked up, and
+        # --no-inline-config so its `eslint-disable` comments can't switch rules off.
+        return [
+            "eslint", "--config", f"{LINT}/eslint.config.mjs", "--no-inline-config", "--no-warn-ignored",
+            "--no-error-on-unmatched-pattern", "--format", "json", "--", *files,
+        ]
+
+    def parse(self, out):
+        issues = []
+        for result in json.loads(out):
+            for m in result["messages"]:
+                # A null ruleId is a parse error, not a rule finding.
+                if not m.get("ruleId"):
+                    continue
+                issues.append(Issue(m["ruleId"], result["filePath"], m["line"], max(m.get("endLine") or m["line"], m["line"]),
+                                    one_line(m["message"]), "error" if m["severity"] == 2 else "warning"))
+        return issues
+
+
 TOOLS: dict[str, Tool] = {
     t.id: t
     for t in (
-        Bandit(), Mypy(), Pylint(), Vulture(),
+        Bandit(), Mypy(), Pylint(), Vulture(), Eslint(),
     )
 }
 
