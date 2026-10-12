@@ -317,10 +317,64 @@ class Eslint(Tool):
         return issues
 
 
+class Tsc(Tool):
+    id = "tsc"
+    # One run per tsconfig.json: a type error depends on the whole project it compiles in.
+    scope = "project"
+    ok_codes = (0, 1, 2)
+    LINE = re.compile(r"^(.+?)\((\d+),(\d+)\): error (TS\d+): (.*)$")
+    # Noise from the target's dependencies not being installed at scan time, not defects in its
+    # code: cannot find module / its declarations / @types packages for node, jest, mocha, and JSX
+    # typings that come from react. Config-level diagnostics (TS5xxx, TS6xxx, TS18003) are about
+    # running Repro's tsc on the project's tsconfig, not about its code, and are dropped too.
+    MISSING_DEPS = {"TS2307", "TS2792", "TS7016", "TS2688", "TS2580", "TS2591", "TS2582", "TS2593", "TS2503", "TS2875", "TS7026"}
+
+    def matches(self, path):
+        return os.path.basename(path) == "tsconfig.json"
+
+    def batches(self, files):
+        return [[f] for f in files]
+
+    def peers(self, target, files):
+        return [nearest_tsconfig(target)] if nearest_tsconfig(target) else []
+
+    def argv(self, files):
+        return ["tsc", "-p", files[0], "--noEmit", "--pretty", "false", "--incremental", "false"]
+
+    def keep(self, issue, batch):
+        # A file belongs to the project of its nearest tsconfig.json; the same error reported by a
+        # parent project is that project's duplicate.
+        return nearest_tsconfig(issue.file) == batch[0]
+
+    def parse(self, out):
+        issues = []
+        for line in out.splitlines():
+            m = self.LINE.match(line.strip())
+            if not m:
+                continue
+            path, row, _col, code, message = m.groups()
+            n = int(code[2:])
+            if code in self.MISSING_DEPS or 5000 <= n < 7000 or n == 18003:
+                continue
+            issues.append(Issue(code, path, int(row), int(row), one_line(message), "error"))
+        return issues
+
+
+def nearest_tsconfig(path: str) -> str | None:
+    d = os.path.dirname(path)
+    while True:
+        candidate = os.path.join(d, "tsconfig.json") if d else "tsconfig.json"
+        if os.path.isfile(candidate):
+            return candidate
+        if not d:
+            return None
+        d = os.path.dirname(d)
+
+
 TOOLS: dict[str, Tool] = {
     t.id: t
     for t in (
-        Bandit(), Mypy(), Pylint(), Vulture(), Eslint(),
+        Bandit(), Mypy(), Pylint(), Vulture(), Eslint(), Tsc(),
     )
 }
 

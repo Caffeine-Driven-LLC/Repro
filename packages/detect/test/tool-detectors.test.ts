@@ -10,6 +10,7 @@ import { banditSpec } from "../src/adapters/bandit.ts";
 import { eslintSpec } from "../src/adapters/eslint.ts";
 import { mypySpec } from "../src/adapters/mypy.ts";
 import { pylintSpec } from "../src/adapters/pylint.ts";
+import { tscSpec } from "../src/adapters/tsc.ts";
 import { vultureSpec } from "../src/adapters/vulture.ts";
 import { reproduce } from "../src/reproduce.ts";
 import { parseToolReport, type ToolSpec, toolAdapter } from "../src/tool-adapter.ts";
@@ -59,6 +60,13 @@ const CASES: Array<[ToolSpec, Row[]]> = [
       ["security/detect-child-process", "web/server.js", 6, "medium", "vulnerability"],
       ["security/detect-non-literal-fs-filename", "web/server.js", 7, "medium", "vulnerability"],
       ["security/detect-unsafe-regex", "web/server.js", 9, "medium", "vulnerability"],
+    ],
+  ],
+  [
+    tscSpec,
+    [
+      ["TS2345", "web/app.ts", 5, "medium", "correctness"],
+      ["TS2322", "web/app.ts", 6, "medium", "correctness"],
     ],
   ],
 ];

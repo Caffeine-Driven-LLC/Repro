@@ -10,6 +10,7 @@ import { pylintAdapter } from "./adapters/pylint.ts";
 import { ruffAdapter } from "./adapters/ruff.ts";
 import { semgrepAdapter } from "./adapters/semgrep.ts";
 import { testsAdapter } from "./adapters/tests.ts";
+import { tscAdapter } from "./adapters/tsc.ts";
 import { vultureAdapter } from "./adapters/vulture.ts";
 
 export interface DetectorFailure {
@@ -62,6 +63,7 @@ export function defaultAdapters(): DetectorAdapter[] {
     pylintAdapter,
     vultureAdapter,
     eslintAdapter,
+    tscAdapter,
     testsAdapter,
   ];
 }
