@@ -511,11 +511,38 @@ class Checkov(Tool):
         return issues
 
 
+# --- Secrets --------------------------------------------------------------------------------------
+
+
+def text_file(path: str) -> bool:
+    return not path.endswith((".png", ".jpg", ".jpeg", ".gif", ".ico", ".pdf", ".zip", ".gz", ".woff", ".woff2", ".ttf"))
+
+
+class DetectSecrets(Tool):
+    id = "detect-secrets"
+    batch_size = 200
+
+    def matches(self, path):
+        return text_file(path)
+
+    def argv(self, files):
+        # Its inline allowlist comments (`pragma: allowlist secret`) don't count. Only the secret's
+        # hash is ever in its report, never the value.
+        return ["detect-secrets", "scan", "--disable-filter", "detect_secrets.filters.allowlist.is_line_allowlisted", "--", *files]
+
+    def parse(self, out):
+        issues = []
+        for path, found in json.loads(out)["results"].items():
+            for s in found:
+                issues.append(Issue(s["type"], path, s["line_number"], s["line_number"], f"{s['type']} detected"))
+        return issues
+
+
 TOOLS: dict[str, Tool] = {
     t.id: t
     for t in (
         Bandit(), Mypy(), Pylint(), Vulture(), Eslint(), Tsc(), Htmlhint(), Stylelint(), Shellcheck(), Hadolint(),
-        Actionlint(), Checkov(),
+        Actionlint(), Checkov(), DetectSecrets(),
     )
 }
 

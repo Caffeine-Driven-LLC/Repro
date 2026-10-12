@@ -3,6 +3,7 @@ import { DockerExecutor, type InstallReport, installDependencies } from "@repro/
 import { actionlintAdapter } from "./adapters/actionlint.ts";
 import { banditAdapter } from "./adapters/bandit.ts";
 import { checkovAdapter } from "./adapters/checkov.ts";
+import { detectSecretsAdapter } from "./adapters/detect-secrets.ts";
 import { eslintAdapter } from "./adapters/eslint.ts";
 import { gitleaksAdapter } from "./adapters/gitleaks.ts";
 import { hadolintAdapter } from "./adapters/hadolint.ts";
@@ -76,6 +77,7 @@ export function defaultAdapters(): DetectorAdapter[] {
     hadolintAdapter,
     actionlintAdapter,
     checkovAdapter,
+    detectSecretsAdapter,
     testsAdapter,
   ];
 }

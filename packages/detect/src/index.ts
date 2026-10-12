@@ -1,6 +1,7 @@
 export * from "./adapters/actionlint.ts";
 export * from "./adapters/bandit.ts";
 export * from "./adapters/checkov.ts";
+export * from "./adapters/detect-secrets.ts";
 export * from "./adapters/eslint.ts";
 export * from "./adapters/gitleaks.ts";
 export * from "./adapters/hadolint.ts";

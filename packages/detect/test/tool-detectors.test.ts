@@ -9,6 +9,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { actionlintSpec } from "../src/adapters/actionlint.ts";
 import { banditSpec } from "../src/adapters/bandit.ts";
 import { checkovSpec } from "../src/adapters/checkov.ts";
+import { detectSecretsSpec } from "../src/adapters/detect-secrets.ts";
 import { eslintSpec } from "../src/adapters/eslint.ts";
 import { hadolintSpec } from "../src/adapters/hadolint.ts";
 import { htmlhintSpec } from "../src/adapters/htmlhint.ts";
@@ -128,6 +129,18 @@ const CASES: Array<[ToolSpec, Row[]]> = [
       ["CKV_AWS_21", "infra/main.tf", 1, "low", "vulnerability"],
     ],
   ],
+  [
+    detectSecretsSpec,
+    [
+      ["AWS Access Key", "config/settings.py", 2, "high", "vulnerability"],
+      ["AWS Access Key", "config/settings.py", 3, "high", "vulnerability"],
+      ["GitHub Token", "config/settings.py", 5, "high", "vulnerability"],
+      ["Base64 High Entropy String", "config/settings.py", 3, "medium", "vulnerability"],
+      ["Secret Keyword", "config/settings.py", 3, "medium", "vulnerability"],
+      ["Secret Keyword", "config/settings.py", 4, "medium", "vulnerability"],
+      ["Base64 High Entropy String", "config/settings.py", 5, "medium", "vulnerability"],
+    ],
+  ],
 ];
 
 const FAKE_VALUES = ["FAKE_AWS_KEY_ID", "FAKE_AWS_SECRET", "FAKE_DB_PASSWORD", "FAKE_GITHUB_TOKEN"];
@@ -167,8 +180,17 @@ describe.skipIf(!ready)("repro-scan detectors (sandbox)", () => {
   beforeAll(async () => {
     source = mkdtempSync(join(tmpdir(), "repro-multi-"));
     cpSync(MULTI, source, { recursive: true });
-    // Credentials in their real formats, assembled here so no scanner of this repo ever sees one.
-    const rnd = (alphabet: string, n: number) => Array.from({ length: n }, () => alphabet[Math.floor(Math.random() * alphabet.length)]).join("");
+    // Credentials in their real formats, assembled here so no scanner of this repo ever sees one. A
+    // fixed seed, so the heuristic detectors (entropy, keyword) judge the same strings every run.
+    let seed = 20261012;
+    const next = () => {
+      // mulberry32
+      seed = (seed + 0x6d2b79f5) | 0;
+      let t = Math.imul(seed ^ (seed >>> 15), 1 | seed);
+      t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+      return (t ^ (t >>> 14)) >>> 0;
+    };
+    const rnd = (alphabet: string, n: number) => Array.from({ length: n }, () => alphabet[next() % alphabet.length]).join("");
     const upper = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
     const mixed = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
     const settings = readFileSync(join(MULTI, "config/settings.py"), "utf8")
