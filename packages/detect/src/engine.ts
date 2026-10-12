@@ -10,6 +10,7 @@ import { privacyPatternsAdapter } from "./adapters/privacy-patterns.ts";
 import { pylintAdapter } from "./adapters/pylint.ts";
 import { ruffAdapter } from "./adapters/ruff.ts";
 import { semgrepAdapter } from "./adapters/semgrep.ts";
+import { shellcheckAdapter } from "./adapters/shellcheck.ts";
 import { stylelintAdapter } from "./adapters/stylelint.ts";
 import { testsAdapter } from "./adapters/tests.ts";
 import { tscAdapter } from "./adapters/tsc.ts";
@@ -68,6 +69,7 @@ export function defaultAdapters(): DetectorAdapter[] {
     tscAdapter,
     htmlhintAdapter,
     stylelintAdapter,
+    shellcheckAdapter,
     testsAdapter,
   ];
 }

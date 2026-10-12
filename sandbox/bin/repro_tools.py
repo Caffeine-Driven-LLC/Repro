@@ -415,10 +415,30 @@ class Stylelint(Tool):
         return issues
 
 
+# --- Shell, containers, CI ------------------------------------------------------------------------
+
+
+class Shellcheck(Tool):
+    id = "shellcheck"
+
+    def matches(self, path):
+        return ext(path) in (".sh", ".bash", ".ksh")
+
+    def argv(self, files):
+        # --norc: the target's .shellcheckrc doesn't apply. Style-level notes are left out.
+        return ["shellcheck", "--format", "json1", "--norc", "--severity", "info", "--", *files]
+
+    def parse(self, out):
+        return [
+            Issue(f"SC{c['code']}", c["file"], c["line"], max(c.get("endLine") or c["line"], c["line"]), one_line(c["message"]), c["level"])
+            for c in json.loads(out)["comments"]
+        ]
+
+
 TOOLS: dict[str, Tool] = {
     t.id: t
     for t in (
-        Bandit(), Mypy(), Pylint(), Vulture(), Eslint(), Tsc(), Htmlhint(), Stylelint(),
+        Bandit(), Mypy(), Pylint(), Vulture(), Eslint(), Tsc(), Htmlhint(), Stylelint(), Shellcheck(),
     )
 }
 

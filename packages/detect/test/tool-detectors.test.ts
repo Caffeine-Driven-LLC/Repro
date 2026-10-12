@@ -11,6 +11,7 @@ import { eslintSpec } from "../src/adapters/eslint.ts";
 import { htmlhintSpec } from "../src/adapters/htmlhint.ts";
 import { mypySpec } from "../src/adapters/mypy.ts";
 import { pylintSpec } from "../src/adapters/pylint.ts";
+import { shellcheckSpec } from "../src/adapters/shellcheck.ts";
 import { stylelintSpec } from "../src/adapters/stylelint.ts";
 import { tscSpec } from "../src/adapters/tsc.ts";
 import { vultureSpec } from "../src/adapters/vulture.ts";
@@ -85,6 +86,15 @@ const CASES: Array<[ToolSpec, Row[]]> = [
       ["declaration-property-value-no-unknown", "web/style.css", 1, "low", "correctness"],
       ["block-no-empty", "web/style.css", 2, "low", "correctness"],
       ["declaration-block-no-duplicate-properties", "web/style.css", 3, "low", "correctness"],
+    ],
+  ],
+  [
+    shellcheckSpec,
+    [
+      ["SC2115", "scripts/deploy.sh", 3, "low", "correctness"],
+      ["SC2164", "scripts/deploy.sh", 4, "low", "correctness"],
+      ["SC2046", "scripts/deploy.sh", 5, "low", "correctness"],
+      ["SC2086", "scripts/deploy.sh", 3, "info", "correctness"],
     ],
   ],
 ];
