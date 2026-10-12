@@ -388,10 +388,37 @@ class Htmlhint(Tool):
         return issues
 
 
+class Stylelint(Tool):
+    id = "stylelint"
+    # 2 means "lint problems found".
+    ok_codes = (0, 2)
+    stream = "stderr"
+
+    def matches(self, path):
+        return ext(path) == ".css" and not path.endswith(".min.css")
+
+    def argv(self, files):
+        # --ignore-disables so `stylelint-disable` comments can't hide anything, and an empty
+        # ignore file in place of the target's .stylelintignore.
+        return [
+            "stylelint", "--config", f"{LINT}/stylelint.config.mjs", "--config-basedir", LINT,
+            "--ignore-path", f"{LINT}/empty-ignore", "--ignore-disables", "--allow-empty-input",
+            "--formatter", "json", "--", *files,
+        ]
+
+    def parse(self, out):
+        issues = []
+        for result in json.loads(out or "[]"):
+            for w in result["warnings"]:
+                issues.append(Issue(w["rule"], result["source"], w["line"], max(w.get("endLine") or w["line"], w["line"]),
+                                    one_line(re.sub(r"\s*\(" + re.escape(w["rule"]) + r"\)$", "", w["text"])), w["severity"]))
+        return issues
+
+
 TOOLS: dict[str, Tool] = {
     t.id: t
     for t in (
-        Bandit(), Mypy(), Pylint(), Vulture(), Eslint(), Tsc(), Htmlhint(),
+        Bandit(), Mypy(), Pylint(), Vulture(), Eslint(), Tsc(), Htmlhint(), Stylelint(),
     )
 }
 

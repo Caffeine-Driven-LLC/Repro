@@ -8,6 +8,7 @@ export * from "./adapters/privacy-patterns.ts";
 export * from "./adapters/pylint.ts";
 export * from "./adapters/ruff.ts";
 export * from "./adapters/semgrep.ts";
+export * from "./adapters/stylelint.ts";
 export * from "./adapters/tests.ts";
 export * from "./adapters/tsc.ts";
 export * from "./adapters/vulture.ts";
