@@ -1,0 +1,195 @@
+"""The linters and scanners behind repro-scan and repro-check, one class per detector.
+
+Each class says which files its tool looks at, how the tool runs, and how the tool's native output
+reads back as issues: a rule, a file, a line span, a message, and the tool's own level. The scan
+(repro-scan) and the reproduction (repro-check) both go through the same class, so a Finding is
+always re-checked with exactly the flags, config, and parser that produced it. Severity and
+category are not decided here: that mapping lives with each adapter in packages/detect.
+
+Every tool runs with Repro's own config (/opt/repro/lint), never the target's: the target repo is
+untrusted (CLAUDE.md section 9), and its .pylintrc, .eslintrc, .yamllint, .checkov.yaml and the
+like could otherwise switch off the very rules judging it. Where a tool has no flag to stop it
+reading config from the working directory, it runs from / on absolute paths instead.
+
+Nothing here prints matched source text. Secret scanners report a rule and a location only.
+"""
+import ast
+import json
+import os
+import re
+import subprocess
+import xml.etree.ElementTree as ET
+from dataclasses import asdict, dataclass
+
+LINT = "/opt/repro/lint"
+# Installed dependencies and Repro's own scratch space aren't the project's code (same exclusions
+# as the Semgrep scan).
+EXCLUDED_DIRS = {"node_modules", ".repro", ".git"}
+# One tool invocation's wall-clock limit. The adapter's own timeout bounds the whole scan.
+BATCH_TIMEOUT_S = 300
+
+
+@dataclass
+class Issue:
+    rule: str
+    file: str
+    line: int
+    end_line: int
+    message: str
+    level: str = ""
+
+
+class ToolError(Exception):
+    pass
+
+
+def one_line(text: str, limit: int = 300) -> str:
+    return " ".join(str(text).split())[:limit]
+
+
+def ext(path: str) -> str:
+    return os.path.splitext(path)[1].lower()
+
+
+def parses_as_python(path: str) -> bool:
+    try:
+        with open(path, "rb") as fh:
+            ast.parse(fh.read(), filename=path)
+        return True
+    except (SyntaxError, ValueError, OSError):
+        return False
+
+
+class Tool:
+    id = ""
+    # How far an issue's evidence reaches, which decides what a reproduction re-runs:
+    #   file     the issue depends only on its own file; re-run on that file alone
+    #   dir      it depends on the other files in its directory (a Python package's modules)
+    #   project  it depends on every file the tool looks at (dead code, a TypeScript project)
+    scope = "file"
+    batch_size = 100
+    ok_codes: tuple[int, ...] = (0, 1)
+    # Where the tool writes its report.
+    stream = "stdout"
+    # "/" for tools that would otherwise read config from the working directory; they get
+    # absolute paths and report absolute paths, which normalize() strips back.
+    cwd: str | None = None
+
+    def matches(self, path: str) -> bool:
+        raise NotImplementedError
+
+    def argv(self, files: list[str]) -> list[str]:
+        raise NotImplementedError
+
+    def parse(self, out: str) -> list[Issue]:
+        raise NotImplementedError
+
+    # Files the tool can't take at all, dropped before it runs (e.g. Python that doesn't parse,
+    # which stops mypy's whole batch; the syntax detector reports those).
+    def runnable(self, path: str) -> bool:
+        return True
+
+    def batches(self, files: list[str]) -> list[list[str]]:
+        if self.scope == "project":
+            return [files] if files else []
+        if self.scope == "dir":
+            by_dir: dict[str, list[str]] = {}
+            for f in files:
+                by_dir.setdefault(os.path.dirname(f), []).append(f)
+            return [by_dir[d] for d in sorted(by_dir)]
+        return [files[i : i + self.batch_size] for i in range(0, len(files), self.batch_size)]
+
+    # The batch a reproduction re-runs to judge `target`: the same files the scan ran it with.
+    def peers(self, target: str, files: list[str]) -> list[str]:
+        if self.scope == "file":
+            return [target]
+        if self.scope == "dir":
+            same = [f for f in files if os.path.dirname(f) == os.path.dirname(target)]
+        else:
+            same = list(files)
+        return same if target in same else [*same, target]
+
+    # Issues to keep from a batch's run (tsc reports files from outside its own project).
+    def keep(self, issue: Issue, batch: list[str]) -> bool:
+        return True
+
+    def run(self, files: list[str]) -> list[Issue]:
+        # A path that starts with "-" goes in as ./-name, so no tool reads a target's file name as a
+        # flag (most get "--" before their files too; cppcheck doesn't accept it).
+        args = self.argv([os.path.abspath(f) if self.cwd else f"./{f}" if f.startswith("-") else f for f in files])
+        try:
+            proc = subprocess.run(args, capture_output=True, text=True, errors="replace", timeout=BATCH_TIMEOUT_S, cwd=self.cwd)
+        except subprocess.TimeoutExpired:
+            raise ToolError(f"{args[0]} timed out after {BATCH_TIMEOUT_S}s")
+        except OSError as e:
+            raise ToolError(f"{args[0]} could not start: {e}")
+        if proc.returncode not in self.ok_codes:
+            raise ToolError(f"{args[0]} exited {proc.returncode}: {(proc.stderr or proc.stdout)[-1500:]}")
+        out = proc.stderr if self.stream == "stderr" else proc.stdout
+        try:
+            issues = self.read(out)
+        except (ValueError, KeyError, TypeError, ET.ParseError) as e:
+            raise ToolError(f"{args[0]} produced an unreadable report ({e}): {out[:500]} {proc.stderr[-500:]}")
+        return [i for i in issues if self.keep(i, files)]
+
+    # The tool's native report as issues, with every path relative to the workspace.
+    def read(self, out: str) -> list[Issue]:
+        issues = self.parse(out)
+        for i in issues:
+            i.file = normalize(i.file)
+        return issues
+
+
+ROOT = os.getcwd()
+# Where the Executor mounts the workspace (packages/executor). Tools that get absolute paths report
+# them under it.
+CONTAINER_ROOT = "/workspace/"
+
+
+def normalize(path: str) -> str:
+    if path.startswith(CONTAINER_ROOT):
+        return os.path.normpath(path[len(CONTAINER_ROOT) :])
+    if os.path.isabs(path):
+        rel = os.path.relpath(path, ROOT)
+        return rel if not rel.startswith("..") else path
+    return os.path.normpath(path)
+
+
+TOOLS: dict[str, Tool] = {
+    t.id: t
+    for t in (
+    )
+}
+
+
+def project_files() -> list[str]:
+    """The files the scan judges: what git tracks at the workspace's commit (Workspace.fileIndex),
+    plus anything a patch has added since, minus installed dependencies."""
+    try:
+        out = subprocess.run(
+            ["git", "ls-files", "-z", "--cached", "--others", "--exclude-standard"],
+            capture_output=True, check=True,
+        ).stdout.decode("utf-8", "replace")
+        files = [f for f in out.split("\0") if f]
+    except (OSError, subprocess.CalledProcessError):
+        files = []
+        for d, dirs, names in os.walk("."):
+            dirs[:] = [x for x in dirs if x not in EXCLUDED_DIRS]
+            files += [os.path.relpath(os.path.join(d, n)) for n in names]
+    files = [f for f in files if not EXCLUDED_DIRS.intersection(f.split("/")) and os.path.isfile(f)]
+    return sorted(set(files))
+
+
+def tool_files(tool: Tool) -> list[str]:
+    return [f for f in project_files() if tool.matches(f) and tool.runnable(f)]
+
+
+def get_tool(name: str) -> Tool:
+    tool = TOOLS.get(name)
+    if tool is None:
+        raise ToolError(f"unknown detector {name!r}")
+    return tool
+
+
+def to_json(issues: list[Issue]) -> list[dict]:
+    return [asdict(i) for i in issues]

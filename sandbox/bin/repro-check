@@ -1,0 +1,64 @@
+#!/usr/bin/env python3
+"""Re-run one detector's tool and report whether one rule still fires in one file.
+
+Usage: repro-check <detector> <rule> <file>
+
+The reproductionCommand for every Finding from a detector in repro_tools.py (bandit, mypy, eslint,
+shellcheck, checkov, ...). It runs the same tool class as the scan (repro-scan), with the same
+Repro-owned config and flags, over the same batch the file was scanned in: the file alone for most
+tools, its directory for mypy and checkov, the whole project for vulture and a tsconfig's project
+for tsc. Same protocol as repro-semgrep-rule:
+  exit 1  one "REPRODUCED <detector> <rule> at <file>:<start>-<end>: ..." line per match
+  exit 0  one "NOT REPRODUCED ..." line
+  exit 2  reason on stderr; could not decide
+Line-agnostic, so it stays valid after a patch moves lines. Only locations and tool messages are
+printed, never matched source text.
+"""
+import os
+import sys
+
+from repro_tools import ROOT, ToolError, get_tool, normalize, project_files
+
+
+def fail(msg: str) -> None:
+    print(f"repro-check: {msg}", file=sys.stderr)
+    sys.exit(2)
+
+
+def main() -> None:
+    if len(sys.argv) != 4:
+        fail("usage: repro-check <detector> <rule> <file>")
+    detector, rule, target = sys.argv[1:]
+    try:
+        tool = get_tool(detector)
+    except ToolError as e:
+        fail(str(e))
+    target = normalize(target)
+    if not os.path.realpath(target).startswith(os.path.realpath(ROOT) + os.sep):
+        fail(f"{target} is outside the workspace")
+    if not os.path.isfile(target):
+        print(f"NOT REPRODUCED {detector} {rule} in {target}: file no longer exists")
+        sys.exit(0)
+    if not tool.runnable(target):
+        fail(f"{detector} can't run on {target} as it stands (see the syntax detector)")
+
+    files = [f for f in project_files() if tool.matches(f) and tool.runnable(f)]
+    batch = tool.peers(target, files)
+    if not batch:
+        fail(f"no {detector} project covers {target}")
+    try:
+        issues = tool.run(batch)
+    except ToolError as e:
+        fail(str(e))
+
+    hits = [i for i in issues if i.rule == rule and i.file == target]
+    for i in hits:
+        print(f"REPRODUCED {detector} {rule} at {i.file}:{i.line}-{i.end_line}: {i.message}")
+    if hits:
+        sys.exit(1)
+    print(f"NOT REPRODUCED {detector} {rule} in {target}")
+    sys.exit(0)
+
+
+if __name__ == "__main__":
+    main()
