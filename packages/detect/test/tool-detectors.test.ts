@@ -9,6 +9,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { actionlintSpec } from "../src/adapters/actionlint.ts";
 import { banditSpec } from "../src/adapters/bandit.ts";
 import { checkovSpec } from "../src/adapters/checkov.ts";
+import { codespellSpec } from "../src/adapters/codespell.ts";
 import { cppcheckSpec } from "../src/adapters/cppcheck.ts";
 import { detectSecretsSpec } from "../src/adapters/detect-secrets.ts";
 import { eslintSpec } from "../src/adapters/eslint.ts";
@@ -173,6 +174,13 @@ const CASES: Array<[ToolSpec, Row[]]> = [
     ],
   ],
   [yamllintSpec, [["key-duplicates", "config/settings.yaml", 3, "low", "correctness"]]],
+  [
+    codespellSpec,
+    [
+      ["recieve", "config/settings.py", 1, "info", "style"],
+      ["seperate", "config/settings.py", 1, "info", "style"],
+    ],
+  ],
 ];
 
 const FAKE_VALUES = ["FAKE_AWS_KEY_ID", "FAKE_AWS_SECRET", "FAKE_DB_PASSWORD", "FAKE_GITHUB_TOKEN"];

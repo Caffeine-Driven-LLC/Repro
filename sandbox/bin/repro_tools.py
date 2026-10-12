@@ -640,11 +640,37 @@ class Yamllint(Tool):
         return issues
 
 
+class Codespell(Tool):
+    id = "codespell"
+    batch_size = 200
+    # 65 means "misspellings found".
+    ok_codes = (0, 65)
+    # codespell reads .codespellrc and setup.cfg from the working directory even with --config.
+    cwd = "/"
+    LINE = re.compile(r"^(.+?):(\d+): (\S+) ==> (.+)$")
+    SKIP = (".lock", "-lock.json", ".min.js", ".min.css", ".map", ".svg", ".csv")
+
+    def matches(self, path):
+        return text_file(path) and not path.endswith(self.SKIP)
+
+    def argv(self, files):
+        return ["codespell", "--config", f"{LINT}/codespellrc", "--quiet-level", "3", "--", *files]
+
+    def parse(self, out):
+        issues = []
+        for line in out.splitlines():
+            m = self.LINE.match(line.strip())
+            if m:
+                path, row, word, fix = m.groups()
+                issues.append(Issue(word.lower(), path, int(row), int(row), f"{word} ==> {fix.strip()}"))
+        return issues
+
+
 TOOLS: dict[str, Tool] = {
     t.id: t
     for t in (
         Bandit(), Mypy(), Pylint(), Vulture(), Eslint(), Tsc(), Htmlhint(), Stylelint(), Shellcheck(), Hadolint(),
-        Actionlint(), Checkov(), DetectSecrets(), Trufflehog(), Cppcheck(), Sqlfluff(), Yamllint(),
+        Actionlint(), Checkov(), DetectSecrets(), Trufflehog(), Cppcheck(), Sqlfluff(), Yamllint(), Codespell(),
     )
 }
 
