@@ -6,4 +6,5 @@ export * from "./adapters/semgrep.ts";
 export * from "./adapters/tests.ts";
 export * from "./engine.ts";
 export * from "./reproduce.ts";
+export * from "./tool-adapter.ts";
 export { DetectorError, redactSecrets } from "./util.ts";

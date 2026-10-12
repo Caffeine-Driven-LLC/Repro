@@ -1,0 +1,5 @@
+# Configuration for the recieve pipeline, seperate from the app.
+AWS_ACCESS_KEY_ID = "FAKE_AWS_KEY_ID"
+AWS_SECRET_ACCESS_KEY = "FAKE_AWS_SECRET"
+DB_PASSWORD = "FAKE_DB_PASSWORD"
+GITHUB_TOKEN = "FAKE_GITHUB_TOKEN"
