@@ -17,6 +17,7 @@ import { semgrepAdapter } from "./adapters/semgrep.ts";
 import { shellcheckAdapter } from "./adapters/shellcheck.ts";
 import { stylelintAdapter } from "./adapters/stylelint.ts";
 import { testsAdapter } from "./adapters/tests.ts";
+import { trufflehogAdapter } from "./adapters/trufflehog.ts";
 import { tscAdapter } from "./adapters/tsc.ts";
 import { vultureAdapter } from "./adapters/vulture.ts";
 
@@ -78,6 +79,7 @@ export function defaultAdapters(): DetectorAdapter[] {
     actionlintAdapter,
     checkovAdapter,
     detectSecretsAdapter,
+    trufflehogAdapter,
     testsAdapter,
   ];
 }

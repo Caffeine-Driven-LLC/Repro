@@ -17,6 +17,7 @@ import { mypySpec } from "../src/adapters/mypy.ts";
 import { pylintSpec } from "../src/adapters/pylint.ts";
 import { shellcheckSpec } from "../src/adapters/shellcheck.ts";
 import { stylelintSpec } from "../src/adapters/stylelint.ts";
+import { trufflehogSpec } from "../src/adapters/trufflehog.ts";
 import { tscSpec } from "../src/adapters/tsc.ts";
 import { vultureSpec } from "../src/adapters/vulture.ts";
 import { reproduce } from "../src/reproduce.ts";
@@ -139,6 +140,13 @@ const CASES: Array<[ToolSpec, Row[]]> = [
       ["Secret Keyword", "config/settings.py", 3, "medium", "vulnerability"],
       ["Secret Keyword", "config/settings.py", 4, "medium", "vulnerability"],
       ["Base64 High Entropy String", "config/settings.py", 5, "medium", "vulnerability"],
+    ],
+  ],
+  [
+    trufflehogSpec,
+    [
+      ["AWS", "config/settings.py", 2, "high", "vulnerability"],
+      ["Github", "config/settings.py", 5, "high", "vulnerability"],
     ],
   ],
 ];

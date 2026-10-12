@@ -538,11 +538,36 @@ class DetectSecrets(Tool):
         return issues
 
 
+class Trufflehog(Tool):
+    id = "trufflehog"
+    batch_size = 200
+
+    def matches(self, path):
+        return text_file(path)
+
+    def argv(self, files):
+        return ["trufflehog", "filesystem", "--no-verification", "--no-update", "--json", "--", *files]
+
+    def parse(self, out):
+        issues = []
+        for line in out.splitlines():
+            if not line.startswith("{"):
+                continue
+            r = json.loads(line)
+            meta = ((r.get("SourceMetadata") or {}).get("Data") or {}).get("Filesystem")
+            if not meta or "DetectorName" not in r:
+                continue
+            row = int(meta.get("line") or 1)
+            # Raw, RawV2 and Redacted all carry (part of) the secret and are never read.
+            issues.append(Issue(r["DetectorName"], meta["file"], row, row, f"{r['DetectorName']} credential detected"))
+        return issues
+
+
 TOOLS: dict[str, Tool] = {
     t.id: t
     for t in (
         Bandit(), Mypy(), Pylint(), Vulture(), Eslint(), Tsc(), Htmlhint(), Stylelint(), Shellcheck(), Hadolint(),
-        Actionlint(), Checkov(), DetectSecrets(),
+        Actionlint(), Checkov(), DetectSecrets(), Trufflehog(),
     )
 }
 

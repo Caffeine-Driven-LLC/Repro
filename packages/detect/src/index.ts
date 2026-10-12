@@ -15,6 +15,7 @@ export * from "./adapters/semgrep.ts";
 export * from "./adapters/shellcheck.ts";
 export * from "./adapters/stylelint.ts";
 export * from "./adapters/tests.ts";
+export * from "./adapters/trufflehog.ts";
 export * from "./adapters/tsc.ts";
 export * from "./adapters/vulture.ts";
 export * from "./engine.ts";
