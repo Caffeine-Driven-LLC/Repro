@@ -1,0 +1,284 @@
+import { execFileSync } from "node:child_process";
+import { cpSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { Finding, type Workspace } from "@repro/contracts";
+import { DockerExecutor, sandboxAvailable } from "@repro/executor";
+import { ingest, removeWorkspace } from "@repro/ingest";
+import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { actionlintSpec } from "../src/adapters/actionlint.ts";
+import { banditSpec } from "../src/adapters/bandit.ts";
+import { checkovSpec } from "../src/adapters/checkov.ts";
+import { codespellSpec } from "../src/adapters/codespell.ts";
+import { cppcheckSpec } from "../src/adapters/cppcheck.ts";
+import { detectSecretsSpec } from "../src/adapters/detect-secrets.ts";
+import { eslintSpec } from "../src/adapters/eslint.ts";
+import { hadolintSpec } from "../src/adapters/hadolint.ts";
+import { htmlhintSpec } from "../src/adapters/htmlhint.ts";
+import { mypySpec } from "../src/adapters/mypy.ts";
+import { pylintSpec } from "../src/adapters/pylint.ts";
+import { shellcheckSpec } from "../src/adapters/shellcheck.ts";
+import { sqlfluffSpec } from "../src/adapters/sqlfluff.ts";
+import { stylelintSpec } from "../src/adapters/stylelint.ts";
+import { syntaxSpec } from "../src/adapters/syntax.ts";
+import { trufflehogSpec } from "../src/adapters/trufflehog.ts";
+import { tscSpec } from "../src/adapters/tsc.ts";
+import { vultureSpec } from "../src/adapters/vulture.ts";
+import { yamllintSpec } from "../src/adapters/yamllint.ts";
+import { reproduce } from "../src/reproduce.ts";
+import { parseToolReport, type ToolSpec, toolAdapter } from "../src/tool-adapter.ts";
+import { MULTI, multiWorkspace, toolReport } from "./helpers.ts";
+
+type Row = [rule: string, file: string, line: number, severity: string, category: string];
+
+// Every repro-scan detector against its captured report (fixtures/tools/), as Findings: rule, file,
+// start line, severity, category, most severe first.
+const CASES: Array<[ToolSpec, Row[]]> = [
+  [
+    banditSpec,
+    [
+      ["B602", "app/service.py", 8, "high", "vulnerability"],
+      ["B301", "app/service.py", 12, "medium", "vulnerability"],
+      ["B506", "app/service.py", 16, "medium", "vulnerability"],
+      ["B403", "app/service.py", 2, "low", "vulnerability"],
+      ["B105", "config/settings.py", 3, "low", "vulnerability"],
+      ["B105", "config/settings.py", 4, "low", "vulnerability"],
+      ["B105", "config/settings.py", 5, "low", "vulnerability"],
+    ],
+  ],
+  [mypySpec, [["operator", "app/service.py", 20, "medium", "correctness"]]],
+  [
+    pylintSpec,
+    [
+      ["E0001", "app/broken.py", 1, "medium", "correctness"],
+      ["E1120", "app/service.py", 16, "medium", "correctness"],
+      ["E0602", "app/service.py", 31, "medium", "correctness"],
+      ["W0102", "app/service.py", 23, "low", "correctness"],
+      ["W0101", "app/service.py", 26, "low", "correctness"],
+      ["W0611", "app/service.py", 1, "info", "style"],
+    ],
+  ],
+  [
+    vultureSpec,
+    [
+      ["unreachable-code", "app/service.py", 26, "low", "correctness"],
+      ["unused-import", "app/service.py", 1, "info", "style"],
+    ],
+  ],
+  [
+    eslintSpec,
+    [
+      ["security/detect-eval-with-expression", "web/server.js", 8, "high", "vulnerability"],
+      ["no-eval", "web/server.js", 8, "high", "vulnerability"],
+      ["security/detect-child-process", "web/server.js", 6, "medium", "vulnerability"],
+      ["security/detect-non-literal-fs-filename", "web/server.js", 7, "medium", "vulnerability"],
+      ["security/detect-unsafe-regex", "web/server.js", 9, "medium", "vulnerability"],
+    ],
+  ],
+  [
+    tscSpec,
+    [
+      ["TS2345", "web/app.ts", 5, "medium", "correctness"],
+      ["TS2322", "web/app.ts", 6, "medium", "correctness"],
+    ],
+  ],
+  [
+    htmlhintSpec,
+    [
+      ["tag-pair", "web/index.html", 5, "low", "correctness"],
+      ["id-unique", "web/index.html", 6, "low", "correctness"],
+      ["alt-require", "web/index.html", 7, "low", "accessibility"],
+    ],
+  ],
+  [
+    stylelintSpec,
+    [
+      ["declaration-property-value-no-unknown", "web/style.css", 1, "low", "correctness"],
+      ["block-no-empty", "web/style.css", 2, "low", "correctness"],
+      ["declaration-block-no-duplicate-properties", "web/style.css", 3, "low", "correctness"],
+    ],
+  ],
+  [
+    shellcheckSpec,
+    [
+      ["SC2115", "scripts/deploy.sh", 3, "low", "correctness"],
+      ["SC2164", "scripts/deploy.sh", 4, "low", "correctness"],
+      ["SC2046", "scripts/deploy.sh", 5, "low", "correctness"],
+      ["SC2086", "scripts/deploy.sh", 3, "info", "correctness"],
+    ],
+  ],
+  [
+    hadolintSpec,
+    [
+      ["DL3007", "Dockerfile", 1, "low", "vulnerability"],
+      ["DL3008", "Dockerfile", 2, "low", "correctness"],
+      ["DL3020", "Dockerfile", 3, "low", "vulnerability"],
+      ["DL3003", "Dockerfile", 4, "low", "correctness"],
+      ["DL3042", "Dockerfile", 4, "low", "correctness"],
+      ["DL3025", "Dockerfile", 5, "low", "correctness"],
+      ["DL3015", "Dockerfile", 2, "info", "style"],
+      ["DL3009", "Dockerfile", 2, "info", "style"],
+    ],
+  ],
+  [
+    actionlintSpec,
+    [
+      ["untrusted-input", ".github/workflows/ci.yml", 9, "high", "vulnerability"],
+      ["expression", ".github/workflows/ci.yml", 11, "medium", "correctness"],
+    ],
+  ],
+  [
+    checkovSpec,
+    [
+      ["CKV_AWS_20", "infra/main.tf", 1, "high", "vulnerability"],
+      ["CKV_AWS_24", "infra/main.tf", 6, "high", "vulnerability"],
+      ["CKV_AWS_21", "infra/main.tf", 1, "low", "vulnerability"],
+    ],
+  ],
+  [
+    detectSecretsSpec,
+    [
+      ["AWS Access Key", "config/settings.py", 2, "high", "vulnerability"],
+      ["AWS Access Key", "config/settings.py", 3, "high", "vulnerability"],
+      ["GitHub Token", "config/settings.py", 5, "high", "vulnerability"],
+      ["Base64 High Entropy String", "config/settings.py", 3, "medium", "vulnerability"],
+      ["Secret Keyword", "config/settings.py", 3, "medium", "vulnerability"],
+      ["Secret Keyword", "config/settings.py", 4, "medium", "vulnerability"],
+      ["Base64 High Entropy String", "config/settings.py", 5, "medium", "vulnerability"],
+    ],
+  ],
+  [
+    trufflehogSpec,
+    [
+      ["AWS", "config/settings.py", 2, "high", "vulnerability"],
+      ["Github", "config/settings.py", 5, "high", "vulnerability"],
+    ],
+  ],
+  [
+    cppcheckSpec,
+    [
+      ["bufferAccessOutOfBounds", "native/buf.c", 7, "high", "vulnerability"],
+      ["arrayIndexOutOfBounds", "native/buf.c", 9, "high", "vulnerability"],
+      ["nullPointer", "native/buf.c", 10, "high", "vulnerability"],
+      ["memleak", "native/buf.c", 10, "medium", "correctness"],
+    ],
+  ],
+  [
+    sqlfluffSpec,
+    [
+      ["RF02", "db/query.sql", 1, "low", "correctness"],
+      ["AM05", "db/query.sql", 3, "low", "correctness"],
+      ["RF02", "db/query.sql", 4, "low", "correctness"],
+      ["AM02", "db/query.sql", 4, "low", "correctness"],
+      ["AL01", "db/query.sql", 2, "info", "style"],
+      ["AL01", "db/query.sql", 3, "info", "style"],
+    ],
+  ],
+  [yamllintSpec, [["key-duplicates", "config/settings.yaml", 3, "low", "correctness"]]],
+  [
+    codespellSpec,
+    [
+      ["recieve", "config/settings.py", 1, "info", "style"],
+      ["seperate", "config/settings.py", 1, "info", "style"],
+    ],
+  ],
+  [
+    syntaxSpec,
+    [
+      ["python-syntax", "app/broken.py", 1, "medium", "correctness"],
+      ["json-syntax", "config/broken.json", 1, "medium", "correctness"],
+    ],
+  ],
+];
+
+const FAKE_VALUES = ["FAKE_AWS_KEY_ID", "FAKE_AWS_SECRET", "FAKE_DB_PASSWORD", "FAKE_GITHUB_TOKEN"];
+
+describe.each(CASES)("%s detector, from its captured report", (spec, expected) => {
+  const findings = parseToolReport(spec, toolReport(spec.id), multiWorkspace);
+
+  it("maps each rule to its severity and category", () => {
+    expect(findings.map((f) => [f.ruleId, f.file, f.lineStart, f.severity, f.category])).toEqual(expected);
+  });
+
+  it("emits unconfirmed Findings, each reproduced by repro-check on its own rule and file", () => {
+    for (const f of findings) {
+      Finding.parse(f);
+      expect(f).toMatchObject({ detectorId: spec.id, reproducible: false });
+      expect(f.reproductionCommand).toBe(`repro-check '${spec.id}' '${f.ruleId}' '${f.file}'`);
+      expect(f.evidence).not.toBe("");
+    }
+  });
+
+  it("never carries a secret's value in a message or evidence", () => {
+    const text = JSON.stringify(findings);
+    for (const value of FAKE_VALUES) expect(text).not.toContain(value);
+  });
+});
+
+// The real tools in the real image, end to end: every repro-scan detector finds its seeded issue in
+// the multi-language fixture, the reproduction step confirms it, and fixing the issue by hand turns
+// repro-check to NOT REPRODUCED.
+const ready = await sandboxAvailable();
+
+describe.skipIf(!ready)("repro-scan detectors (sandbox)", () => {
+  const exec = new DockerExecutor();
+  let source: string;
+  let workspace: Workspace;
+
+  beforeAll(async () => {
+    source = mkdtempSync(join(tmpdir(), "repro-multi-"));
+    cpSync(MULTI, source, { recursive: true });
+    // Credentials in their real formats, assembled here so no scanner of this repo ever sees one. A
+    // fixed seed, so the heuristic detectors (entropy, keyword) judge the same strings every run.
+    let seed = 20261012;
+    const next = () => {
+      // mulberry32
+      seed = (seed + 0x6d2b79f5) | 0;
+      let t = Math.imul(seed ^ (seed >>> 15), 1 | seed);
+      t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+      return (t ^ (t >>> 14)) >>> 0;
+    };
+    const rnd = (alphabet: string, n: number) => Array.from({ length: n }, () => alphabet[next() % alphabet.length]).join("");
+    const upper = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
+    const mixed = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+    const settings = readFileSync(join(MULTI, "config/settings.py"), "utf8")
+      .replace("FAKE_AWS_KEY_ID", `AKIA${rnd(upper, 16)}`)
+      .replace("FAKE_AWS_SECRET", rnd(`${mixed}/+`, 40))
+      .replace("FAKE_DB_PASSWORD", `${rnd(mixed, 12)}#${rnd(mixed, 6)}`)
+      .replace("FAKE_GITHUB_TOKEN", `ghp_${rnd(mixed, 36)}`);
+    writeFileSync(join(source, "config/settings.py"), settings);
+    const git = (...a: string[]) => execFileSync("git", ["-c", "user.email=t@t", "-c", "user.name=t", ...a], { cwd: source });
+    git("init", "-q");
+    git("add", "-A", "--force");
+    git("commit", "-qm", "seed");
+    workspace = await ingest(`multi-${Date.now()}`, { kind: "local", ref: source });
+  }, 60_000);
+
+  afterAll(() => {
+    if (workspace) removeWorkspace(workspace);
+    rmSync(source, { recursive: true, force: true });
+  });
+
+  it.each(CASES.map(([spec, expected]) => [spec.id, spec, expected] as const))(
+    "%s finds and reproduces its seeded issues",
+    async (_id, spec, expected) => {
+      const findings = await toolAdapter(spec).run(workspace, exec);
+      const rows = findings.map((f) => [f.ruleId, f.file, f.lineStart]);
+      for (const [rule, file, line] of expected) expect(rows).toContainEqual([rule, file, line]);
+      const { findings: checked } = await reproduce(findings.slice(0, 1), workspace, exec);
+      expect(checked[0]!.reproducible).toBe(true);
+      expect(checked[0]!.reproductionOutput).toMatch(new RegExp(`^REPRODUCED ${spec.id} `));
+    },
+    180_000,
+  );
+
+  it("reports NOT REPRODUCED once the issue is fixed by hand", async () => {
+    const check = (cmd: string) => exec.exec({ workspacePath: workspace.path, command: cmd, timeoutMs: 120_000 });
+    const before = await check("repro-check eslint no-eval web/server.js");
+    expect(before.exitCode).toBe(1);
+    const server = join(workspace.path, "web/server.js");
+    writeFileSync(server, readFileSync(server, "utf8").replace("  eval(req.body.code);\n", ""));
+    const after = await check("repro-check eslint no-eval web/server.js");
+    expect(after).toMatchObject({ exitCode: 0, stdout: "NOT REPRODUCED eslint no-eval in web/server.js\n" });
+  }, 180_000);
+});

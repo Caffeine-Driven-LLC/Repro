@@ -18,10 +18,40 @@ const { findings: confirmed, attempts } = await reproduce(findings, workspace, e
 | `privacy-patterns` | Semgrep, Repro's own pack (`sandbox/rules/privacy-patterns`) | the Assurant privacy checks | `repro-canary <check> <file> <function> <line> privacy-patterns <rule>` where the flagged function can be called (Python/JS), else `repro-semgrep-rule privacy-patterns <rule> <file>` |
 | `osv-scanner` | osv-scanner, offline, against the image's OSV snapshot | known-vulnerable dependency versions in npm/PyPI lockfiles | `repro-osv check <lockfile> <package> <advisory>` |
 | `ruff` | Ruff's Bandit (S, minus S101) and bugbear (B) rules | Python security issues and likely bugs | `repro-ruff-rule <code> <file>` |
+| `bandit` | Bandit (minus B101, B404, B603, B607) | Python security issues, with Bandit's own severity per test | `repro-check bandit <test-id> <file>` |
+| `mypy` | mypy, default (non-strict) settings, missing imports as `Any` | Python type errors in annotated code | `repro-check mypy <error-code> <file>` |
+| `pylint` | Pylint errors and warnings (no convention or refactor messages) | Python bugs: undefined names, wrong call arity, dangerous defaults | `repro-check pylint <message-id> <file>` |
+| `vulture` | Vulture at 90% confidence and up | unreachable code, unused imports | `repro-check vulture <kind> <file>` |
+| `eslint` | ESLint with eslint-plugin-security and core `no-eval`-family rules, Repro's flat config, `--no-inline-config` | JS/TS code execution, command injection, path traversal, ReDoS | `repro-check eslint <rule> <file>` |
+| `tsc` | `tsc --noEmit` per `tsconfig.json`, minus missing-dependency noise | TypeScript type errors | `repro-check tsc <TScode> <file>` |
+| `htmlhint` | HTMLHint, Repro's rule set | unpaired tags, duplicate ids and attributes, missing alt | `repro-check htmlhint <rule> <file>` |
+| `stylelint` | stylelint-config-recommended, `--ignore-disables` | invalid CSS values, duplicate properties, empty blocks | `repro-check stylelint <rule> <file>` |
+| `shellcheck` | ShellCheck, `--norc`, info level and up | shell script bugs | `repro-check shellcheck <SCcode> <file>` |
+| `hadolint` | hadolint, inline ignore pragmas disabled | Dockerfile bugs and risky practice | `repro-check hadolint <rule> <file>` |
+| `actionlint` | actionlint, Repro's (empty) config | GitHub Actions script injection, broken expressions and references | `repro-check actionlint <kind> <file>` |
+| `checkov` | Checkov, offline, Terraform/Kubernetes/CloudFormation/Dockerfile/GitHub Actions | infrastructure misconfiguration | `repro-check checkov <check-id> <file>` |
+| `detect-secrets` | detect-secrets, inline allowlist comments ignored | hardcoded secrets (evidence masked) | `repro-check detect-secrets <type> <file>` |
+| `trufflehog` | TruffleHog filesystem mode, `--no-verification` | hardcoded credentials by provider (evidence masked) | `repro-check trufflehog <detector> <file>` |
+| `cppcheck` | cppcheck warning/performance/portability checks, no inline suppressions | C/C++ memory-safety errors and bugs | `repro-check cppcheck <id> <file>` |
+| `sqlfluff` | SQLFluff, ANSI dialect, layout and capitalisation off | ambiguous or unqualified SQL | `repro-check sqlfluff <code> <file>` |
+| `yamllint` | yamllint, Repro's relaxed config | duplicate keys, broken YAML | `repro-check yamllint <rule> <file>` |
+| `codespell` | codespell | common misspellings | `repro-check codespell <word> <file>` |
+| `syntax` | `repro-syntax`, Repro's own | JSON, TOML, YAML, and Python files that don't parse | `repro-check syntax <kind>-syntax <file>` |
 | `tests` | the project's own test command (`node --test`, unittest, pytest per test; anything else as a whole) | failing tests | `repro-test check <kind> <file> <line> <test>` |
 
-All scanners and rule packs are baked into the sandbox image (`npm run sandbox:build`); containers
-run with no network, so a rebuild is what refreshes the Semgrep registry rules and the OSV database.
+All scanners and rule packs are baked into the sandbox image (`npm run sandbox:build`), every version
+pinned in `sandbox/Dockerfile`; containers run with no network, so a rebuild is what refreshes the
+Semgrep registry rules and the OSV database.
+
+The nineteen detectors from `bandit` to `syntax` share one harness. `sandbox/bin/repro_tools.py` has
+a class per tool saying which files it reads, how it runs (always with Repro's own config from
+`sandbox/lint/`, never the target's), and how its native output reads back as issues; `repro-scan
+<detector>` runs it over the workspace and `repro-check` re-runs the same class on one Finding's
+file, so a reproduction always uses the scan's exact flags, config, and parser. On this side
+`toolAdapter` (`src/tool-adapter.ts`) turns the issues into Findings, with each adapter deciding only
+where it applies and each rule's severity and category. Each detector keeps at most 200 Findings
+per run, the most severe first, and `detect()` runs at most four adapters at a time
+(`REPRO_DETECT_CONCURRENCY`).
 
 `detect()` installs the target's dependencies (`@repro/executor`'s `installDependencies`) after the
 static scanners and before `tests`, the only detector that runs the target's code. The Python venv
@@ -46,7 +76,9 @@ after a patch moves lines; at detect time the reproduction step also requires th
 
 - **`npm audit` / `pip-audit`:** both query live registries, and the sandbox has no network.
   osv-scanner's offline mode covers the same ground deterministically.
-- **Dead code and unused dependencies (depcheck, ts-prune, vulture):** high false-positive rates on
-  dynamic imports and framework entry points, and "unused function" isn't a finding worth a repair.
+- **Dead code and unused dependencies (depcheck, ts-prune, vulture's low-confidence bands):** high
+  false-positive rates on dynamic imports and framework entry points, and "unused function" isn't a
+  finding worth a repair. Vulture runs only at 90% confidence and up (unreachable code, unused
+  imports).
 - **Outdated dependencies:** needs the live registry, and "outdated" isn't a defect; a version that
   is actually vulnerable is already an `osv-scanner` Finding.

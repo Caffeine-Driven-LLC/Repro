@@ -1,0 +1,50 @@
+#!/usr/bin/env python3
+"""Run one wrapped linter or scanner over the whole workspace and print its issues as JSON.
+
+Usage: repro-scan <detector>
+       repro-scan --parse <detector> <report-file>    (tests: parse a captured native report)
+
+The scan behind every detector defined in repro_tools.py. Prints one JSON object on stdout:
+  {"issues": [{"rule", "file", "line", "end_line", "message", "level"}, ...],
+   "files": <files scanned>, "batches": <tool runs>, "errors": ["<a run that failed>", ...]}
+and exits 0, even with errors, as long as at least one run succeeded: a failed batch is reported,
+not read as "nothing found". Exits 2 when nothing could run at all. The matching reproduction is
+repro-check, which re-runs the same tool class on one file.
+"""
+import json
+import sys
+
+from repro_tools import ToolError, get_tool, to_json, tool_files
+
+
+def main() -> None:
+    args = sys.argv[1:]
+    try:
+        if len(args) == 3 and args[0] == "--parse":
+            tool = get_tool(args[1])
+            with open(args[2], encoding="utf-8") as fh:
+                print(json.dumps(to_json(tool.read(fh.read()))))
+            return
+        if len(args) != 1:
+            raise ToolError("usage: repro-scan <detector>")
+        tool = get_tool(args[0])
+    except ToolError as e:
+        print(f"repro-scan: {e}", file=sys.stderr)
+        sys.exit(2)
+
+    files = tool_files(tool)
+    batches = tool.batches(files)
+    issues, errors = [], []
+    for batch in batches:
+        try:
+            issues += tool.run(batch)
+        except ToolError as e:
+            errors.append(str(e))
+    if batches and len(errors) == len(batches):
+        print(f"repro-scan: every {tool.id} run failed: {errors[0]}", file=sys.stderr)
+        sys.exit(2)
+    print(json.dumps({"issues": to_json(issues), "files": len(files), "batches": len(batches), "errors": errors}))
+
+
+if __name__ == "__main__":
+    main()

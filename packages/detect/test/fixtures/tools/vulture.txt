@@ -1,0 +1,2 @@
+app/service.py:1: unused import 'os' (90% confidence)
+app/service.py:26: unreachable code after 'return' (100% confidence)

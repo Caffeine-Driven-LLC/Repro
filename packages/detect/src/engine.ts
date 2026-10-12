@@ -1,11 +1,30 @@
 import { type DetectorAdapter, type Executor, Finding, type Workspace } from "@repro/contracts";
 import { DockerExecutor, type InstallReport, installDependencies } from "@repro/executor";
+import { actionlintAdapter } from "./adapters/actionlint.ts";
+import { banditAdapter } from "./adapters/bandit.ts";
+import { checkovAdapter } from "./adapters/checkov.ts";
+import { codespellAdapter } from "./adapters/codespell.ts";
+import { cppcheckAdapter } from "./adapters/cppcheck.ts";
+import { detectSecretsAdapter } from "./adapters/detect-secrets.ts";
+import { eslintAdapter } from "./adapters/eslint.ts";
 import { gitleaksAdapter } from "./adapters/gitleaks.ts";
+import { hadolintAdapter } from "./adapters/hadolint.ts";
+import { htmlhintAdapter } from "./adapters/htmlhint.ts";
+import { mypyAdapter } from "./adapters/mypy.ts";
 import { osvAdapter } from "./adapters/osv.ts";
 import { privacyPatternsAdapter } from "./adapters/privacy-patterns.ts";
+import { pylintAdapter } from "./adapters/pylint.ts";
 import { ruffAdapter } from "./adapters/ruff.ts";
 import { semgrepAdapter } from "./adapters/semgrep.ts";
+import { shellcheckAdapter } from "./adapters/shellcheck.ts";
+import { sqlfluffAdapter } from "./adapters/sqlfluff.ts";
+import { stylelintAdapter } from "./adapters/stylelint.ts";
+import { syntaxAdapter } from "./adapters/syntax.ts";
 import { testsAdapter } from "./adapters/tests.ts";
+import { trufflehogAdapter } from "./adapters/trufflehog.ts";
+import { tscAdapter } from "./adapters/tsc.ts";
+import { vultureAdapter } from "./adapters/vulture.ts";
+import { yamllintAdapter } from "./adapters/yamllint.ts";
 
 export interface DetectorFailure {
   detectorId: string;
@@ -27,7 +46,13 @@ export interface DetectResult {
 export interface DetectOptions {
   /** Installs the target's dependencies. Defaults to installFor(exec); pass null to skip. */
   install?: ((workspace: Workspace) => Promise<InstallReport>) | null;
+  /** Adapters running at once. Defaults to REPRO_DETECT_CONCURRENCY, else 4. */
+  concurrency?: number;
 }
+
+// Each adapter is at least one sandbox container with its own memory and CPU limits, and with two
+// dozen detectors, starting them all at once would ask the host for far more than it has.
+const DEFAULT_CONCURRENCY = 4;
 
 // Detectors that run the target's own code, and so need its dependencies installed first. Everything
 // else is a static scanner, run before the install so it never walks an installed node_modules/.
@@ -39,7 +64,34 @@ export function installFor(exec: Executor): ((workspace: Workspace) => Promise<I
 }
 
 export function defaultAdapters(): DetectorAdapter[] {
-  return [semgrepAdapter, gitleaksAdapter, privacyPatternsAdapter, osvAdapter, ruffAdapter, testsAdapter];
+  return [
+    semgrepAdapter,
+    gitleaksAdapter,
+    privacyPatternsAdapter,
+    osvAdapter,
+    ruffAdapter,
+    // The linters and scanners behind repro-scan (tool-adapter.ts, sandbox/bin/repro_tools.py).
+    banditAdapter,
+    mypyAdapter,
+    pylintAdapter,
+    vultureAdapter,
+    eslintAdapter,
+    tscAdapter,
+    htmlhintAdapter,
+    stylelintAdapter,
+    shellcheckAdapter,
+    hadolintAdapter,
+    actionlintAdapter,
+    checkovAdapter,
+    detectSecretsAdapter,
+    trufflehogAdapter,
+    cppcheckAdapter,
+    sqlfluffAdapter,
+    yamllintAdapter,
+    codespellAdapter,
+    syntaxAdapter,
+    testsAdapter,
+  ];
 }
 
 // The Deterministic Detection Engine: runs every enabled adapter, nothing else. No model calls,
@@ -79,8 +131,22 @@ export async function detect(
       result.findings.push(finding);
     }
   };
+  const concurrency = Math.max(1, options.concurrency ?? (Number(process.env.REPRO_DETECT_CONCURRENCY) || DEFAULT_CONCURRENCY));
+  // Results are collected in adapter order, whatever order the adapters finish in.
   const runAll = async (group: DetectorAdapter[]) => {
-    const settled = await Promise.allSettled(group.map((a) => a.run(workspace, exec)));
+    const settled: PromiseSettledResult<Finding[]>[] = new Array(group.length);
+    let next = 0;
+    const worker = async () => {
+      while (next < group.length) {
+        const i = next++;
+        try {
+          settled[i] = { status: "fulfilled", value: await group[i]!.run(workspace, exec) };
+        } catch (reason) {
+          settled[i] = { status: "rejected", reason };
+        }
+      }
+    };
+    await Promise.all(Array.from({ length: Math.min(concurrency, group.length) }, worker));
     settled.forEach((outcome, i) => collect(group[i]!, outcome));
   };
 

@@ -1,0 +1,5 @@
+# Repro's own hadolint config for the `hadolint` detector (sandbox/bin/repro_tools.py). Passed with
+# --config, so a target's .hadolint.yaml is never read, and with disable-ignore-pragma its inline
+# `# hadolint ignore=` comments don't count either.
+disable-ignore-pragma: true
+failure-threshold: none

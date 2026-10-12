@@ -1,0 +1,3 @@
+# Repro's own actionlint config for the `actionlint` detector (sandbox/bin/repro_tools.py), in place
+# of a target's .github/actionlint.yaml, whose paths.ignore could hide errors. Nothing configured:
+# actionlint's defaults, every check on.

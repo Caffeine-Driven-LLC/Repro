@@ -1,0 +1,4 @@
+Used config files:
+    1: /opt/repro/lint/codespellrc
+/workspace/config/settings.py:1: recieve ==> receive
+/workspace/config/settings.py:1: seperate ==> separate

@@ -1,0 +1,3 @@
+# Repro's own codespell config for the `codespell` detector (sandbox/bin/repro_tools.py). codespell
+# runs from / so the target's .codespellrc and setup.cfg aren't read; this file is all it gets.
+[codespell]

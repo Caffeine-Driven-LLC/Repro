@@ -1,0 +1,1 @@
+config/settings.yaml:3:3: [error] duplication of key "port" in mapping (key-duplicates)

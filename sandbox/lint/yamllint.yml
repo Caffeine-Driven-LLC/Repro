@@ -1,0 +1,20 @@
+# Repro's own yamllint config for the `yamllint` detector (sandbox/bin/repro_tools.py), passed with
+# --config-file so a target's .yamllint is never read. yamllint's "relaxed" preset, minus the
+# purely cosmetic rules: what's left is duplicate keys, broken structure, and the like.
+extends: relaxed
+rules:
+  line-length: disable
+  trailing-spaces: disable
+  indentation: disable
+  empty-lines: disable
+  new-line-at-end-of-file: disable
+  new-lines: disable
+  comments: disable
+  comments-indentation: disable
+  document-start: disable
+  truthy: disable
+  brackets: disable
+  braces: disable
+  commas: disable
+  colons: disable
+  hyphens: disable

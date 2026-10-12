@@ -1,0 +1,16 @@
+# Repro's own pylint config for the `pylint` detector (sandbox/bin/repro_tools.py), passed with
+# --rcfile so the target's .pylintrc / pyproject.toml settings are never read. Errors (E) and
+# warnings (W) only: convention (C) and refactor (R) messages are style opinions, not defects.
+[MAIN]
+persistent=no
+jobs=1
+load-plugins=
+
+[MESSAGES CONTROL]
+disable=all
+enable=E,W
+# What is left out of E and W is on the command line (repro_tools.py), applied after this.
+
+[REPORTS]
+reports=no
+score=no

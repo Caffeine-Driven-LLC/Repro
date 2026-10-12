@@ -1,0 +1,2 @@
+{"rule": "python-syntax", "file": "app/broken.py", "line": 1, "end_line": 1, "message": "invalid Python: invalid syntax", "level": "error"}
+{"rule": "json-syntax", "file": "config/broken.json", "line": 1, "end_line": 1, "message": "invalid JSON: Expecting value", "level": "error"}
