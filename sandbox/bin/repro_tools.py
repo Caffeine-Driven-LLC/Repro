@@ -435,10 +435,25 @@ class Shellcheck(Tool):
         ]
 
 
+class Hadolint(Tool):
+    id = "hadolint"
+
+    def matches(self, path):
+        name = os.path.basename(path)
+        return name in ("Dockerfile", "Containerfile") or name.startswith("Dockerfile.") or name.endswith(".Dockerfile")
+
+    def argv(self, files):
+        # Repro's config sets disable-ignore-pragma, so `# hadolint ignore=` comments don't count.
+        return ["hadolint", "--no-fail", "--format", "json", "--config", f"{LINT}/hadolint.yaml", "--", *files]
+
+    def parse(self, out):
+        return [Issue(r["code"], r["file"], r["line"], r["line"], one_line(r["message"]), r["level"]) for r in json.loads(out or "[]")]
+
+
 TOOLS: dict[str, Tool] = {
     t.id: t
     for t in (
-        Bandit(), Mypy(), Pylint(), Vulture(), Eslint(), Tsc(), Htmlhint(), Stylelint(), Shellcheck(),
+        Bandit(), Mypy(), Pylint(), Vulture(), Eslint(), Tsc(), Htmlhint(), Stylelint(), Shellcheck(), Hadolint(),
     )
 }
 

@@ -8,6 +8,7 @@ import { ingest, removeWorkspace } from "@repro/ingest";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { banditSpec } from "../src/adapters/bandit.ts";
 import { eslintSpec } from "../src/adapters/eslint.ts";
+import { hadolintSpec } from "../src/adapters/hadolint.ts";
 import { htmlhintSpec } from "../src/adapters/htmlhint.ts";
 import { mypySpec } from "../src/adapters/mypy.ts";
 import { pylintSpec } from "../src/adapters/pylint.ts";
@@ -95,6 +96,19 @@ const CASES: Array<[ToolSpec, Row[]]> = [
       ["SC2164", "scripts/deploy.sh", 4, "low", "correctness"],
       ["SC2046", "scripts/deploy.sh", 5, "low", "correctness"],
       ["SC2086", "scripts/deploy.sh", 3, "info", "correctness"],
+    ],
+  ],
+  [
+    hadolintSpec,
+    [
+      ["DL3007", "Dockerfile", 1, "low", "vulnerability"],
+      ["DL3008", "Dockerfile", 2, "low", "correctness"],
+      ["DL3020", "Dockerfile", 3, "low", "vulnerability"],
+      ["DL3003", "Dockerfile", 4, "low", "correctness"],
+      ["DL3042", "Dockerfile", 4, "low", "correctness"],
+      ["DL3025", "Dockerfile", 5, "low", "correctness"],
+      ["DL3015", "Dockerfile", 2, "info", "style"],
+      ["DL3009", "Dockerfile", 2, "info", "style"],
     ],
   ],
 ];

@@ -3,6 +3,7 @@ import { DockerExecutor, type InstallReport, installDependencies } from "@repro/
 import { banditAdapter } from "./adapters/bandit.ts";
 import { eslintAdapter } from "./adapters/eslint.ts";
 import { gitleaksAdapter } from "./adapters/gitleaks.ts";
+import { hadolintAdapter } from "./adapters/hadolint.ts";
 import { htmlhintAdapter } from "./adapters/htmlhint.ts";
 import { mypyAdapter } from "./adapters/mypy.ts";
 import { osvAdapter } from "./adapters/osv.ts";
@@ -70,6 +71,7 @@ export function defaultAdapters(): DetectorAdapter[] {
     htmlhintAdapter,
     stylelintAdapter,
     shellcheckAdapter,
+    hadolintAdapter,
     testsAdapter,
   ];
 }
