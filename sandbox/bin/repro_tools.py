@@ -155,9 +155,38 @@ def normalize(path: str) -> str:
     return os.path.normpath(path)
 
 
+# --- Python ---------------------------------------------------------------------------------------
+
+
+class Bandit(Tool):
+    id = "bandit"
+    # Same exclusions as the ruff detector's, for the same reasons (ruff.ts): B101 flags every
+    # pytest assert, B603/B607 fire on the argument-list call that is the fix for shell=True, and
+    # B404 flags `import subprocess` itself.
+    SKIP = "B101,B404,B603,B607"
+    # The hardcoded-password tests (B105-B107) quote the password itself in their message.
+    QUOTED = re.compile(r":\s*'.*'$")
+
+    def matches(self, path):
+        return ext(path) == ".py"
+
+    def argv(self, files):
+        # Explicit files rather than -r, so a target's .bandit file is never read; --ignore-nosec so
+        # its `# nosec` comments can't hide anything.
+        return ["bandit", "-f", "json", "-q", "--ignore-nosec", "-s", self.SKIP, "--", *files]
+
+    def parse(self, out):
+        return [
+            Issue(r["test_id"], r["filename"], r["line_number"], max(r.get("line_range") or [r["line_number"]]),
+                  f"{r['test_name']}: {one_line(self.QUOTED.sub('', r['issue_text']))}", r["issue_severity"].lower())
+            for r in json.loads(out)["results"]
+        ]
+
+
 TOOLS: dict[str, Tool] = {
     t.id: t
     for t in (
+        Bandit(),
     )
 }
 
