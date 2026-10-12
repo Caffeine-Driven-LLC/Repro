@@ -251,10 +251,45 @@ class Pylint(Tool):
         ]
 
 
+class Vulture(Tool):
+    id = "vulture"
+    # Dead code is a whole-program question: a function unused in its own file may be called from
+    # another.
+    scope = "project"
+    # 3 means "dead code found".
+    ok_codes = (0, 3)
+    LINE = re.compile(r"^(.+?):(\d+): (.+) \((\d+)% confidence(?:, (\d+) lines?)?\)$")
+    KIND = re.compile(r"^(unused \w+|unreachable code|unsatisfiable \w+ condition|redundant if-condition)")
+
+    def matches(self, path):
+        return ext(path) == ".py"
+
+    def runnable(self, path):
+        return parses_as_python(path)
+
+    def argv(self, files):
+        # 90% and up: unused imports, unreachable code, unused arguments. Everything vulture rates
+        # lower (unused functions, classes, attributes) is a guess about dynamic use.
+        return ["vulture", "--config", f"{LINT}/vulture.toml", "--min-confidence", "90", "--", *files]
+
+    def parse(self, out):
+        issues = []
+        for line in out.splitlines():
+            m = self.LINE.match(line.strip())
+            if not m:
+                continue
+            path, row, message, _conf, size = m.groups()
+            kind = self.KIND.match(message)
+            rule = (kind.group(1) if kind else message.split("'")[0].strip()).replace(" ", "-")
+            start = int(row)
+            issues.append(Issue(rule, path, start, start + max(int(size or 1), 1) - 1, one_line(message)))
+        return issues
+
+
 TOOLS: dict[str, Tool] = {
     t.id: t
     for t in (
-        Bandit(), Mypy(), Pylint(),
+        Bandit(), Mypy(), Pylint(), Vulture(),
     )
 }
 

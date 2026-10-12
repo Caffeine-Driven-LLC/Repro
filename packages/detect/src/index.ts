@@ -7,6 +7,7 @@ export * from "./adapters/pylint.ts";
 export * from "./adapters/ruff.ts";
 export * from "./adapters/semgrep.ts";
 export * from "./adapters/tests.ts";
+export * from "./adapters/vulture.ts";
 export * from "./engine.ts";
 export * from "./reproduce.ts";
 export * from "./tool-adapter.ts";

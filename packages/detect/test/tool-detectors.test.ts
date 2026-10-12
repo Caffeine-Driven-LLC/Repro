@@ -9,6 +9,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { banditSpec } from "../src/adapters/bandit.ts";
 import { mypySpec } from "../src/adapters/mypy.ts";
 import { pylintSpec } from "../src/adapters/pylint.ts";
+import { vultureSpec } from "../src/adapters/vulture.ts";
 import { reproduce } from "../src/reproduce.ts";
 import { parseToolReport, type ToolSpec, toolAdapter } from "../src/tool-adapter.ts";
 import { MULTI, multiWorkspace, toolReport } from "./helpers.ts";
@@ -40,6 +41,13 @@ const CASES: Array<[ToolSpec, Row[]]> = [
       ["W0102", "app/service.py", 23, "low", "correctness"],
       ["W0101", "app/service.py", 26, "low", "correctness"],
       ["W0611", "app/service.py", 1, "info", "style"],
+    ],
+  ],
+  [
+    vultureSpec,
+    [
+      ["unreachable-code", "app/service.py", 26, "low", "correctness"],
+      ["unused-import", "app/service.py", 1, "info", "style"],
     ],
   ],
 ];

@@ -1,0 +1,3 @@
+# Repro's own vulture config for the `vulture` detector (sandbox/bin/repro_tools.py), in place of the
+# target's pyproject.toml [tool.vulture], whose ignore lists could hide dead code.
+[tool.vulture]
