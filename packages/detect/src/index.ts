@@ -20,6 +20,7 @@ export * from "./adapters/tests.ts";
 export * from "./adapters/trufflehog.ts";
 export * from "./adapters/tsc.ts";
 export * from "./adapters/vulture.ts";
+export * from "./adapters/yamllint.ts";
 export * from "./engine.ts";
 export * from "./reproduce.ts";
 export * from "./tool-adapter.ts";

@@ -22,6 +22,7 @@ import { stylelintSpec } from "../src/adapters/stylelint.ts";
 import { trufflehogSpec } from "../src/adapters/trufflehog.ts";
 import { tscSpec } from "../src/adapters/tsc.ts";
 import { vultureSpec } from "../src/adapters/vulture.ts";
+import { yamllintSpec } from "../src/adapters/yamllint.ts";
 import { reproduce } from "../src/reproduce.ts";
 import { parseToolReport, type ToolSpec, toolAdapter } from "../src/tool-adapter.ts";
 import { MULTI, multiWorkspace, toolReport } from "./helpers.ts";
@@ -171,6 +172,7 @@ const CASES: Array<[ToolSpec, Row[]]> = [
       ["AL01", "db/query.sql", 3, "info", "style"],
     ],
   ],
+  [yamllintSpec, [["key-duplicates", "config/settings.yaml", 3, "low", "correctness"]]],
 ];
 
 const FAKE_VALUES = ["FAKE_AWS_KEY_ID", "FAKE_AWS_SECRET", "FAKE_DB_PASSWORD", "FAKE_GITHUB_TOKEN"];

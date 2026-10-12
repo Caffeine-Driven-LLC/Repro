@@ -22,6 +22,7 @@ import { testsAdapter } from "./adapters/tests.ts";
 import { trufflehogAdapter } from "./adapters/trufflehog.ts";
 import { tscAdapter } from "./adapters/tsc.ts";
 import { vultureAdapter } from "./adapters/vulture.ts";
+import { yamllintAdapter } from "./adapters/yamllint.ts";
 
 export interface DetectorFailure {
   detectorId: string;
@@ -84,6 +85,7 @@ export function defaultAdapters(): DetectorAdapter[] {
     trufflehogAdapter,
     cppcheckAdapter,
     sqlfluffAdapter,
+    yamllintAdapter,
     testsAdapter,
   ];
 }

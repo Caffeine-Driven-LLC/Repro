@@ -620,11 +620,31 @@ class Sqlfluff(Tool):
         return issues
 
 
+class Yamllint(Tool):
+    id = "yamllint"
+    LINE = re.compile(r"^(.+?):(\d+):(\d+): \[(\w+)\] (.*?)(?: \(([\w-]+)\))?$")
+
+    def matches(self, path):
+        return ext(path) in (".yml", ".yaml")
+
+    def argv(self, files):
+        return ["yamllint", "--config-file", f"{LINT}/yamllint.yml", "--format", "parsable", "--", *files]
+
+    def parse(self, out):
+        issues = []
+        for line in out.splitlines():
+            m = self.LINE.match(line.strip())
+            if m:
+                path, row, _col, level, message, rule = m.groups()
+                issues.append(Issue(rule or "syntax", path, int(row), int(row), one_line(message), level))
+        return issues
+
+
 TOOLS: dict[str, Tool] = {
     t.id: t
     for t in (
         Bandit(), Mypy(), Pylint(), Vulture(), Eslint(), Tsc(), Htmlhint(), Stylelint(), Shellcheck(), Hadolint(),
-        Actionlint(), Checkov(), DetectSecrets(), Trufflehog(), Cppcheck(), Sqlfluff(),
+        Actionlint(), Checkov(), DetectSecrets(), Trufflehog(), Cppcheck(), Sqlfluff(), Yamllint(),
     )
 }
 
