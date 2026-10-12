@@ -97,4 +97,22 @@ describe("detect", () => {
     expect(r.install).toBeUndefined();
     expect(r.failures).toEqual([]);
   });
+
+  it("never runs more adapters at once than its concurrency allows, and keeps their order", async () => {
+    let running = 0;
+    let peak = 0;
+    const slow = (id: string): DetectorAdapter => ({
+      id,
+      run: async () => {
+        peak = Math.max(peak, ++running);
+        await new Promise((r) => setTimeout(r, 5));
+        running--;
+        return [{ ...base, id: `fnd_${id}`, detectorId: id }];
+      },
+    });
+    const adapters = ["a", "b", "c", "d", "e", "f"].map(slow);
+    const r = await detect(seededWorkspace, exec, adapters, { install: null, concurrency: 2 });
+    expect(peak).toBe(2);
+    expect(r.findings.map((f) => f.detectorId)).toEqual(["a", "b", "c", "d", "e", "f"]);
+  });
 });

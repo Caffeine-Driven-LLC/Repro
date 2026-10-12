@@ -27,7 +27,13 @@ export interface DetectResult {
 export interface DetectOptions {
   /** Installs the target's dependencies. Defaults to installFor(exec); pass null to skip. */
   install?: ((workspace: Workspace) => Promise<InstallReport>) | null;
+  /** Adapters running at once. Defaults to REPRO_DETECT_CONCURRENCY, else 4. */
+  concurrency?: number;
 }
+
+// Each adapter is at least one sandbox container with its own memory and CPU limits, and with two
+// dozen detectors, starting them all at once would ask the host for far more than it has.
+const DEFAULT_CONCURRENCY = 4;
 
 // Detectors that run the target's own code, and so need its dependencies installed first. Everything
 // else is a static scanner, run before the install so it never walks an installed node_modules/.
@@ -79,8 +85,22 @@ export async function detect(
       result.findings.push(finding);
     }
   };
+  const concurrency = Math.max(1, options.concurrency ?? (Number(process.env.REPRO_DETECT_CONCURRENCY) || DEFAULT_CONCURRENCY));
+  // Results are collected in adapter order, whatever order the adapters finish in.
   const runAll = async (group: DetectorAdapter[]) => {
-    const settled = await Promise.allSettled(group.map((a) => a.run(workspace, exec)));
+    const settled: PromiseSettledResult<Finding[]>[] = new Array(group.length);
+    let next = 0;
+    const worker = async () => {
+      while (next < group.length) {
+        const i = next++;
+        try {
+          settled[i] = { status: "fulfilled", value: await group[i]!.run(workspace, exec) };
+        } catch (reason) {
+          settled[i] = { status: "rejected", reason };
+        }
+      }
+    };
+    await Promise.all(Array.from({ length: Math.min(concurrency, group.length) }, worker));
     settled.forEach((outcome, i) => collect(group[i]!, outcome));
   };
 
