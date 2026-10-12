@@ -450,10 +450,38 @@ class Hadolint(Tool):
         return [Issue(r["code"], r["file"], r["line"], r["line"], one_line(r["message"]), r["level"]) for r in json.loads(out or "[]")]
 
 
+class Actionlint(Tool):
+    id = "actionlint"
+
+    def matches(self, path):
+        return path.startswith(".github/workflows/") and ext(path) in (".yml", ".yaml")
+
+    def argv(self, files):
+        # Repro's (empty) config in place of the target's .github/actionlint.yaml, which can ignore
+        # errors by pattern. The shellcheck and pyflakes passes over `run:` scripts are off: they
+        # would report shell findings under a workflow rule, and shellcheck has its own detector.
+        return [
+            "actionlint", "-config-file", f"{LINT}/actionlint.yaml", "-format", "{{json .}}", "-no-color",
+            "-shellcheck=", "-pyflakes=", "--", *files,
+        ]
+
+    def parse(self, out):
+        issues = []
+        for r in json.loads(out or "[]"):
+            rule = r["kind"]
+            # Script injection: an untrusted event field interpolated into a `run:` script. Split out
+            # of "expression" because it is a vulnerability, not a typo.
+            if rule == "expression" and "potentially untrusted" in r["message"]:
+                rule = "untrusted-input"
+            issues.append(Issue(rule, r["filepath"], r["line"], r["line"], one_line(r["message"])))
+        return issues
+
+
 TOOLS: dict[str, Tool] = {
     t.id: t
     for t in (
         Bandit(), Mypy(), Pylint(), Vulture(), Eslint(), Tsc(), Htmlhint(), Stylelint(), Shellcheck(), Hadolint(),
+        Actionlint(),
     )
 }
 

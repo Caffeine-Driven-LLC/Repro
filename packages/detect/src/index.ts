@@ -1,3 +1,4 @@
+export * from "./adapters/actionlint.ts";
 export * from "./adapters/bandit.ts";
 export * from "./adapters/eslint.ts";
 export * from "./adapters/gitleaks.ts";

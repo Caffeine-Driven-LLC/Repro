@@ -6,6 +6,7 @@ import { Finding, type Workspace } from "@repro/contracts";
 import { DockerExecutor, sandboxAvailable } from "@repro/executor";
 import { ingest, removeWorkspace } from "@repro/ingest";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { actionlintSpec } from "../src/adapters/actionlint.ts";
 import { banditSpec } from "../src/adapters/bandit.ts";
 import { eslintSpec } from "../src/adapters/eslint.ts";
 import { hadolintSpec } from "../src/adapters/hadolint.ts";
@@ -109,6 +110,13 @@ const CASES: Array<[ToolSpec, Row[]]> = [
       ["DL3025", "Dockerfile", 5, "low", "correctness"],
       ["DL3015", "Dockerfile", 2, "info", "style"],
       ["DL3009", "Dockerfile", 2, "info", "style"],
+    ],
+  ],
+  [
+    actionlintSpec,
+    [
+      ["untrusted-input", ".github/workflows/ci.yml", 9, "high", "vulnerability"],
+      ["expression", ".github/workflows/ci.yml", 11, "medium", "correctness"],
     ],
   ],
 ];

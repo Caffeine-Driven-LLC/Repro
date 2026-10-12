@@ -1,5 +1,6 @@
 import { type DetectorAdapter, type Executor, Finding, type Workspace } from "@repro/contracts";
 import { DockerExecutor, type InstallReport, installDependencies } from "@repro/executor";
+import { actionlintAdapter } from "./adapters/actionlint.ts";
 import { banditAdapter } from "./adapters/bandit.ts";
 import { eslintAdapter } from "./adapters/eslint.ts";
 import { gitleaksAdapter } from "./adapters/gitleaks.ts";
@@ -72,6 +73,7 @@ export function defaultAdapters(): DetectorAdapter[] {
     stylelintAdapter,
     shellcheckAdapter,
     hadolintAdapter,
+    actionlintAdapter,
     testsAdapter,
   ];
 }
