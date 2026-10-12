@@ -183,10 +183,45 @@ class Bandit(Tool):
         ]
 
 
+class Mypy(Tool):
+    id = "mypy"
+    # Per directory, so two modules with the same name in different folders (every tests/conftest.py)
+    # never land in one mypy run, which mypy refuses outright.
+    scope = "dir"
+
+    def matches(self, path):
+        return ext(path) in (".py", ".pyi")
+
+    def runnable(self, path):
+        return parses_as_python(path)
+
+    def argv(self, files):
+        return [
+            "mypy", "--config-file", f"{LINT}/mypy.ini", "--cache-dir", "/tmp/repro-mypy-cache",
+            # The target's dependencies aren't installed at scan time; a missing one is Any, not a
+            # finding. --follow-imports silent reads the project's other modules for their types
+            # without reporting on them: each file's issues come from its own run.
+            "--ignore-missing-imports", "--follow-imports", "silent",
+            "--no-error-summary", "--show-error-end", "--output", "json", "--", *files,
+        ]
+
+    def parse(self, out):
+        issues = []
+        for line in out.splitlines():
+            if not line.startswith("{"):
+                continue
+            r = json.loads(line)
+            if r.get("severity") != "error" or not r.get("code"):
+                continue
+            issues.append(Issue(r["code"], r["file"], r["line"], max(r.get("end_line") or r["line"], r["line"]),
+                                one_line(r["message"]), r["severity"]))
+        return issues
+
+
 TOOLS: dict[str, Tool] = {
     t.id: t
     for t in (
-        Bandit(),
+        Bandit(), Mypy(),
     )
 }
 

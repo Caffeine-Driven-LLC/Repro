@@ -1,5 +1,6 @@
 export * from "./adapters/bandit.ts";
 export * from "./adapters/gitleaks.ts";
+export * from "./adapters/mypy.ts";
 export * from "./adapters/osv.ts";
 export * from "./adapters/privacy-patterns.ts";
 export * from "./adapters/ruff.ts";

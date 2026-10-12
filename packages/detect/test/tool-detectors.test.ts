@@ -7,6 +7,7 @@ import { DockerExecutor, sandboxAvailable } from "@repro/executor";
 import { ingest, removeWorkspace } from "@repro/ingest";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { banditSpec } from "../src/adapters/bandit.ts";
+import { mypySpec } from "../src/adapters/mypy.ts";
 import { reproduce } from "../src/reproduce.ts";
 import { parseToolReport, type ToolSpec, toolAdapter } from "../src/tool-adapter.ts";
 import { MULTI, multiWorkspace, toolReport } from "./helpers.ts";
@@ -28,6 +29,7 @@ const CASES: Array<[ToolSpec, Row[]]> = [
       ["B105", "config/settings.py", 5, "low", "vulnerability"],
     ],
   ],
+  [mypySpec, [["operator", "app/service.py", 20, "medium", "correctness"]]],
 ];
 
 const FAKE_VALUES = ["FAKE_AWS_KEY_ID", "FAKE_AWS_SECRET", "FAKE_DB_PASSWORD", "FAKE_GITHUB_TOKEN"];

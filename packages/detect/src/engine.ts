@@ -2,6 +2,7 @@ import { type DetectorAdapter, type Executor, Finding, type Workspace } from "@r
 import { DockerExecutor, type InstallReport, installDependencies } from "@repro/executor";
 import { banditAdapter } from "./adapters/bandit.ts";
 import { gitleaksAdapter } from "./adapters/gitleaks.ts";
+import { mypyAdapter } from "./adapters/mypy.ts";
 import { osvAdapter } from "./adapters/osv.ts";
 import { privacyPatternsAdapter } from "./adapters/privacy-patterns.ts";
 import { ruffAdapter } from "./adapters/ruff.ts";
@@ -54,6 +55,7 @@ export function defaultAdapters(): DetectorAdapter[] {
     ruffAdapter,
     // The linters and scanners behind repro-scan (tool-adapter.ts, sandbox/bin/repro_tools.py).
     banditAdapter,
+    mypyAdapter,
     testsAdapter,
   ];
 }
