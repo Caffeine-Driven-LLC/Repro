@@ -8,6 +8,7 @@ import { ingest, removeWorkspace } from "@repro/ingest";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { banditSpec } from "../src/adapters/bandit.ts";
 import { mypySpec } from "../src/adapters/mypy.ts";
+import { pylintSpec } from "../src/adapters/pylint.ts";
 import { reproduce } from "../src/reproduce.ts";
 import { parseToolReport, type ToolSpec, toolAdapter } from "../src/tool-adapter.ts";
 import { MULTI, multiWorkspace, toolReport } from "./helpers.ts";
@@ -30,6 +31,17 @@ const CASES: Array<[ToolSpec, Row[]]> = [
     ],
   ],
   [mypySpec, [["operator", "app/service.py", 20, "medium", "correctness"]]],
+  [
+    pylintSpec,
+    [
+      ["E0001", "app/broken.py", 1, "medium", "correctness"],
+      ["E1120", "app/service.py", 16, "medium", "correctness"],
+      ["E0602", "app/service.py", 31, "medium", "correctness"],
+      ["W0102", "app/service.py", 23, "low", "correctness"],
+      ["W0101", "app/service.py", 26, "low", "correctness"],
+      ["W0611", "app/service.py", 1, "info", "style"],
+    ],
+  ],
 ];
 
 const FAKE_VALUES = ["FAKE_AWS_KEY_ID", "FAKE_AWS_SECRET", "FAKE_DB_PASSWORD", "FAKE_GITHUB_TOKEN"];

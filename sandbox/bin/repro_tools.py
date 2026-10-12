@@ -218,10 +218,43 @@ class Mypy(Tool):
         return issues
 
 
+class Pylint(Tool):
+    id = "pylint"
+    # Left out of E and W:
+    # - import-error, no-name-in-module, no-member: the target's dependencies aren't installed at
+    #   scan time, so these fire on every third-party import.
+    # - fixme: a TODO comment is not a defect.
+    # - unused-argument, protected-access, logging-fstring-interpolation, unspecified-encoding,
+    #   broad-exception-caught, broad-exception-raised, global-statement, redefined-outer-name: they
+    #   fire on deliberate, idiomatic code far more often than on a bug.
+    LEFT_OUT = (
+        "import-error,no-name-in-module,no-member,fixme,unused-argument,protected-access,"
+        "logging-fstring-interpolation,unspecified-encoding,broad-exception-caught,"
+        "broad-exception-raised,global-statement,redefined-outer-name"
+    )
+    batch_size = 50
+    # Pylint's exit code is a bit mask of the message types it emitted; 32 is a usage error.
+    ok_codes = tuple(range(32))
+
+    def matches(self, path):
+        return ext(path) == ".py"
+
+    def argv(self, files):
+        # Errors and warnings only, with Repro's own rcfile (pylintrc says which are left out).
+        return ["pylint", "--rcfile", f"{LINT}/pylintrc", f"--disable={self.LEFT_OUT}", "--output-format", "json2", "--", *files]
+
+    def parse(self, out):
+        return [
+            Issue(m["messageId"], m["path"], m["line"], max(m.get("endLine") or m["line"], m["line"]),
+                  f"{m['symbol']}: {one_line(m['message'])}", m["type"])
+            for m in json.loads(out)["messages"]
+        ]
+
+
 TOOLS: dict[str, Tool] = {
     t.id: t
     for t in (
-        Bandit(), Mypy(),
+        Bandit(), Mypy(), Pylint(),
     )
 }
 

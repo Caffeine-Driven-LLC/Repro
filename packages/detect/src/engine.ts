@@ -5,6 +5,7 @@ import { gitleaksAdapter } from "./adapters/gitleaks.ts";
 import { mypyAdapter } from "./adapters/mypy.ts";
 import { osvAdapter } from "./adapters/osv.ts";
 import { privacyPatternsAdapter } from "./adapters/privacy-patterns.ts";
+import { pylintAdapter } from "./adapters/pylint.ts";
 import { ruffAdapter } from "./adapters/ruff.ts";
 import { semgrepAdapter } from "./adapters/semgrep.ts";
 import { testsAdapter } from "./adapters/tests.ts";
@@ -56,6 +57,7 @@ export function defaultAdapters(): DetectorAdapter[] {
     // The linters and scanners behind repro-scan (tool-adapter.ts, sandbox/bin/repro_tools.py).
     banditAdapter,
     mypyAdapter,
+    pylintAdapter,
     testsAdapter,
   ];
 }
