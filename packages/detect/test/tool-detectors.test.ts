@@ -8,6 +8,7 @@ import { ingest, removeWorkspace } from "@repro/ingest";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { actionlintSpec } from "../src/adapters/actionlint.ts";
 import { banditSpec } from "../src/adapters/bandit.ts";
+import { checkovSpec } from "../src/adapters/checkov.ts";
 import { eslintSpec } from "../src/adapters/eslint.ts";
 import { hadolintSpec } from "../src/adapters/hadolint.ts";
 import { htmlhintSpec } from "../src/adapters/htmlhint.ts";
@@ -117,6 +118,14 @@ const CASES: Array<[ToolSpec, Row[]]> = [
     [
       ["untrusted-input", ".github/workflows/ci.yml", 9, "high", "vulnerability"],
       ["expression", ".github/workflows/ci.yml", 11, "medium", "correctness"],
+    ],
+  ],
+  [
+    checkovSpec,
+    [
+      ["CKV_AWS_20", "infra/main.tf", 1, "high", "vulnerability"],
+      ["CKV_AWS_24", "infra/main.tf", 6, "high", "vulnerability"],
+      ["CKV_AWS_21", "infra/main.tf", 1, "low", "vulnerability"],
     ],
   ],
 ];

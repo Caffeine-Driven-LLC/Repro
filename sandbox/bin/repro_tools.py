@@ -477,11 +477,45 @@ class Actionlint(Tool):
         return issues
 
 
+# --- Infrastructure as code -----------------------------------------------------------------------
+
+
+class Checkov(Tool):
+    id = "checkov"
+    # A Terraform module is a directory: a resource's variables and references come from its
+    # sibling files.
+    scope = "dir"
+    # .checkov.yaml in the working directory is read even alongside --config-file.
+    cwd = "/"
+    FRAMEWORKS = ["terraform", "kubernetes", "dockerfile", "cloudformation", "github_actions"]
+
+    def matches(self, path):
+        return ext(path) in (".tf", ".yml", ".yaml") or Hadolint.matches(self, path)
+
+    def argv(self, files):
+        args = ["checkov", "--config-file", f"{LINT}/checkov.yaml", "--framework", *self.FRAMEWORKS,
+                "--output", "json", "--quiet", "--compact", "--soft-fail", "--skip-download"]
+        for f in files:
+            args += ["--file", f]
+        return args
+
+    def parse(self, out):
+        data = json.loads(out or "[]")
+        reports = data if isinstance(data, list) else [data]
+        issues = []
+        for report in reports:
+            for c in (report.get("results") or {}).get("failed_checks", []):
+                start, end = (c.get("file_line_range") or [1, 1])[:2]
+                path = c.get("file_abs_path") or c["file_path"]
+                issues.append(Issue(c["check_id"], path, max(start, 1), max(end, start, 1), one_line(c["check_name"])))
+        return issues
+
+
 TOOLS: dict[str, Tool] = {
     t.id: t
     for t in (
         Bandit(), Mypy(), Pylint(), Vulture(), Eslint(), Tsc(), Htmlhint(), Stylelint(), Shellcheck(), Hadolint(),
-        Actionlint(),
+        Actionlint(), Checkov(),
     )
 }
 

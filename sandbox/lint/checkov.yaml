@@ -1,0 +1,4 @@
+# Repro's own Checkov config for the `checkov` detector (sandbox/bin/repro_tools.py), in place of a
+# target's .checkov.yaml, whose skip-check could hide failures. Offline: nothing is downloaded and
+# no Bridgecrew/Prisma platform is contacted.
+skip-download: true
