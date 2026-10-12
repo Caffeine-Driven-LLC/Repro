@@ -3,6 +3,7 @@ import { DockerExecutor, type InstallReport, installDependencies } from "@repro/
 import { banditAdapter } from "./adapters/bandit.ts";
 import { eslintAdapter } from "./adapters/eslint.ts";
 import { gitleaksAdapter } from "./adapters/gitleaks.ts";
+import { htmlhintAdapter } from "./adapters/htmlhint.ts";
 import { mypyAdapter } from "./adapters/mypy.ts";
 import { osvAdapter } from "./adapters/osv.ts";
 import { privacyPatternsAdapter } from "./adapters/privacy-patterns.ts";
@@ -64,6 +65,7 @@ export function defaultAdapters(): DetectorAdapter[] {
     vultureAdapter,
     eslintAdapter,
     tscAdapter,
+    htmlhintAdapter,
     testsAdapter,
   ];
 }

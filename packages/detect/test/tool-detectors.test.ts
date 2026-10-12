@@ -8,6 +8,7 @@ import { ingest, removeWorkspace } from "@repro/ingest";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { banditSpec } from "../src/adapters/bandit.ts";
 import { eslintSpec } from "../src/adapters/eslint.ts";
+import { htmlhintSpec } from "../src/adapters/htmlhint.ts";
 import { mypySpec } from "../src/adapters/mypy.ts";
 import { pylintSpec } from "../src/adapters/pylint.ts";
 import { tscSpec } from "../src/adapters/tsc.ts";
@@ -67,6 +68,14 @@ const CASES: Array<[ToolSpec, Row[]]> = [
     [
       ["TS2345", "web/app.ts", 5, "medium", "correctness"],
       ["TS2322", "web/app.ts", 6, "medium", "correctness"],
+    ],
+  ],
+  [
+    htmlhintSpec,
+    [
+      ["tag-pair", "web/index.html", 5, "low", "correctness"],
+      ["id-unique", "web/index.html", 6, "low", "correctness"],
+      ["alt-require", "web/index.html", 7, "low", "accessibility"],
     ],
   ],
 ];

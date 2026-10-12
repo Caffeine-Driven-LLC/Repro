@@ -371,10 +371,27 @@ def nearest_tsconfig(path: str) -> str | None:
         d = os.path.dirname(d)
 
 
+class Htmlhint(Tool):
+    id = "htmlhint"
+
+    def matches(self, path):
+        return ext(path) in (".html", ".htm")
+
+    def argv(self, files):
+        return ["htmlhint", "--config", f"{LINT}/htmlhint.json", "--format", "json", "--", *files]
+
+    def parse(self, out):
+        issues = []
+        for result in json.loads(out or "[]"):
+            for m in result["messages"]:
+                issues.append(Issue(m["rule"]["id"], result["file"], m["line"], m["line"], one_line(m["message"]), m["type"]))
+        return issues
+
+
 TOOLS: dict[str, Tool] = {
     t.id: t
     for t in (
-        Bandit(), Mypy(), Pylint(), Vulture(), Eslint(), Tsc(),
+        Bandit(), Mypy(), Pylint(), Vulture(), Eslint(), Tsc(), Htmlhint(),
     )
 }
 
